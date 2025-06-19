@@ -13,6 +13,10 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import com.sbank.netbanking.exceptions.TaskException;
+import com.sbank.netbanking.model.SessionData;
+import com.sbank.netbanking.service.SessionService;
+
 @WebFilter("/*")
 public class AuthFilter implements Filter {
 
@@ -22,27 +26,40 @@ public class AuthFilter implements Filter {
     }
 
     @Override
-    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-            throws IOException, ServletException {
-    	
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws ServletException, IOException
+            {
+    	try {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
+        SessionService sessionService = new SessionService();
 
         HttpSession session = httpRequest.getSession(false); // Don't create new session if there is no session present
+        ////
+        SessionData userSessionData = new SessionData();
 
-        String path = httpRequest.getRequestURI().substring(httpRequest.getContextPath().length());
+        userSessionData = (SessionData) session.getAttribute("SessionData");
 
-        System.out.println("Intercepted path: " + path);
-        System.out.println("Session ID: " + (session != null ? session.getId() : "No session"));
+        long userId = userSessionData.getUserId();
+        ///
+        
+//        String path = httpRequest.getRequestURI().substring(httpRequest.getContextPath().length());
+//
+//        System.out.println("Intercepted path: " + path);
+//        System.out.println("Session ID: " + (session != null ? session.getId() : "No session"));
+//
+//        // Skip authentication for login/logout
+//        if (isPublicRoute(path) && session == null) {		// Allow all for testing
+//            chain.doFilter(request, response);
+//            return;
+//        }
+//        
+//        if(session==null) {
+//        	System.out.println("Null session");
+//        }
 
-        // Skip authentication for login/logout
-        if (isPublicRoute(path)) {		// Allow all for testing
-            chain.doFilter(request, response);
-            return;
-        }
-
+        
         // Check if user is authenticated
-        if (session != null && session.getAttribute("user") != null) {
+        if (session != null && sessionService.sessionValidator(session)) {
             // User is logged in
             chain.doFilter(request, response);
         } else {
@@ -52,6 +69,16 @@ public class AuthFilter implements Filter {
             httpResponse.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"Login required\"}");
         }
     }
+    	
+    	
+    	catch(TaskException | IOException e) {
+    		
+    	        response.setContentType("application/json");
+    	        response.getWriter().write(String.format("{\"error\": \"%s}", e));
+    	
+    	
+            }
+            }
     
     
 

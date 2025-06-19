@@ -34,9 +34,10 @@ public class ExceptionMessages {
 
 	    public static String LONG_OBJECT_CONVERSION_ERROR = "Invalid string format for Long object conversion: ";
 	    public static String DATA_NOT_FOUND_IN_JSON = "Required data not found on JSON object";
+	    public static String SESSION_ID_RETRIEVAL_FAILED = "Session data retrieval failed!";
 
 
-
+	    public static String SESSION_DATA_INSERT_FAILED="Failed to insert session data in database!";
 
 
 

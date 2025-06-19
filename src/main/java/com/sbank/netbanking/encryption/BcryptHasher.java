@@ -49,25 +49,7 @@ public class BcryptHasher {
 
 
 
-INSERT INTO branches (
-	    branch_id,
-	    admin_id,
-	    ifsc_code,
-	    bank_name,
-	    location,
-	    created_at,
-	    modified_at,
-	    modified_by
-	) VALUES (
-	    900001, -- or any unique branch ID
-	    100000001,
-	    'SBIN900001',
-	    'Sugan Bank',
-	    'Salem',
-	    UNIX_TIMESTAMP(),
-	    UNIX_TIMESTAMP(),
-	    100000001
-	);
+
 
 
 
