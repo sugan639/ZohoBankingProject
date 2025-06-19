@@ -1,0 +1,122 @@
+mysql> show tables;
+Empty set (0.01 sec)
+
+mysql> CREATE TABLE users (
+    ->   user_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    ->   name VARCHAR(100),
+    ->   password CHAR(80) NOT NULL,
+    ->   email VARCHAR(100),
+    ->   mobile_number BIGINT,
+    ->   role ENUM('CUSTOMER', 'EMPLOYEE', 'ADMIN') DEFAULT 'CUSTOMER',
+    ->   created_at BIGINT,
+    ->   modified_at BIGINT,
+    ->   modified_by BIGINT
+    -> );
+Query OK, 0 rows affected (0.05 sec)
+
+mysql> CREATE TABLE customers (
+    ->   customer_id BIGINT PRIMARY KEY,
+    ->   dob BIGINT, -- epoch millis
+    ->   address VARCHAR(200),
+    ->   aadhar_number BIGINT UNIQUE,
+    ->   pan_number VARCHAR(10) UNIQUE,
+    ->   CONSTRAINT fk_customer_user FOREIGN KEY (customer_id) REFERENCES users(user_id)
+    -> );
+Query OK, 0 rows affected (0.05 sec)
+
+mysql> CREATE TABLE employees (
+    ->   employee_id BIGINT PRIMARY KEY,
+    ->   branch_id BIGINT,
+    ->   CONSTRAINT fk_employee_user FOREIGN KEY (employee_id) REFERENCES users(user_id),
+    ->   CONSTRAINT fk_employee_branch FOREIGN KEY (branch_id) REFERENCES branches(branch_id)
+    -> );
+    
+Query OK, 0 rows affected (0.04 sec)
+
+mysql> CREATE TABLE accounts (
+    ->   account_number BIGINT AUTO_INCREMENT PRIMARY KEY,
+    ->   user_id BIGINT NOT NULL,
+    ->   balance DECIMAL(15,2) DEFAULT 0.00,
+    ->   branch_id BIGINT NOT NULL,
+    ->   status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE',
+    ->   created_at BIGINT,
+    ->   modified_at BIGINT,
+    ->   modified_by BIGINT,
+    ->   CONSTRAINT fk_account_user FOREIGN KEY (user_id) REFERENCES users(user_id),
+    ->   CONSTRAINT fk_account_branch FOREIGN KEY (branch_id) REFERENCES branches(branch_id)
+    -> );
+Query OK, 0 rows affected (0.06 sec)
+
+mysql> CREATE TABLE transactions (
+    ->   transaction_id BIGINT,
+    ->   user_id BIGINT,  -- no longer NOT NULL, and no foreign key constraint
+    ->   account_number BIGINT NOT NULL,
+    ->   transaction_reference_number BIGINT PRIMARY KEY,
+    ->   amount DECIMAL(15,2) NOT NULL,
+    ->   type ENUM('DEPOSIT', 'WITHDRAWAL', 'INTRA_BANK_DEBIT', 'INTRA_BANK_CREDIT', 'INTERBANK_DEBIT', 'INTERBANK_CREDIT') NOT NULL,
+    ->   status ENUM('SUCCESS', 'FAILED'),
+    ->   timestamp BIGINT,
+    ->   done_by BIGINT,
+    ->   closing_balance DECIMAL(15,2) NOT NULL,
+    ->   CONSTRAINT fk_transaction_account FOREIGN KEY (account_number) REFERENCES accounts(account_number)
+    -> );
+Query OK, 0 rows affected (0.05 sec)
+
+
+mysql> CREATE TABLE beneficiery (
+    ->   beneficiery_unique_number BIGINT PRIMARY KEY,
+    ->   customer_id BIGINT,
+    ->   beneficiery_account_number BIGINT,
+    ->   beneficiery_name VARCHAR(100),
+    ->   beneficiery_ifsc_code VARCHAR(11),
+    ->   created_at BIGINT,
+    ->   modified_at BIGINT,
+    ->   modified_by BIGINT,
+    ->   CONSTRAINT fk_beneficiery_customer FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+    -> );
+Query OK, 0 rows affected (0.04 sec)
+
+mysql> CREATE TABLE branches (
+    ->   branch_id BIGINT PRIMARY KEY,
+    ->   admin_id BIGINT NOT NULL,
+    ->   ifsc_code VARCHAR(10),
+    ->   bank_name VARCHAR(30),
+    ->   location VARCHAR(30),
+    ->   created_at BIGINT,
+    ->   modified_at BIGINT,
+    ->   modified_by BIGINT,
+    -> );
+Query OK, 0 rows affected (0.05 sec)
+
+mysql> CREATE TABLE account_opening_request (
+    ->   request_id BIGINT PRIMARY KEY,
+    ->   user_id BIGINT,
+    ->   branch_id BIGINT,
+    ->   status ENUM('ACCEPTED', 'FAILED','PENDING') DEFAULT 'PENDING',
+    ->   reviewer BIGINT,
+    ->   CONSTRAINT fk_request_user FOREIGN KEY (user_id) REFERENCES customers(customer_id),
+    ->   CONSTRAINT fk_request_branch FOREIGN KEY (branch_id) REFERENCES branches(branch_id),
+    ->   CONSTRAINT fk_request_reviewer FOREIGN KEY (reviewer) REFERENCES employees(employee_id)
+    -> );
+Query OK, 0 rows affected (0.07 sec)
+
+
+
+mysql> CREATE TABLE session (
+    ->     user_id BIGINT PRIMARY KEY,
+    ->     session_id VARCHAR(80) NOT NULL UNIQUE,
+    ->     role ENUM('ADMIN', 'EMPLOYEE', 'CUSTOMER') NOT NULL,
+    ->     start_time BIGINT NOT NULL,
+    ->     CONSTRAINT fk_session_user FOREIGN KEY (user_id) REFERENCES users(user_id)
+    -> );
+Query OK, 0 rows affected (0.09 sec)
+
+
+
+
+
+
+
+
+
+
