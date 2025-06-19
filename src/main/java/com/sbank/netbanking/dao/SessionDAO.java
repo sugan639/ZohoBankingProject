@@ -59,6 +59,25 @@ public class SessionDAO {
 	        throw new TaskException(ExceptionMessages.SESSION_DATA_INSERT_FAILED, e);
 	    }
 	}
+	
+	
+	public boolean deleteSessionByUserId(long userId) throws TaskException {
+	    String query = "DELETE FROM session WHERE user_id = ?";
+	    
+	    try (PreparedStatement stmt = prepareStatement(query)) {
+
+	        stmt.setLong(1, userId);
+	        int rowsAffected = stmt.executeUpdate();
+	        
+	        System.out.println(rowsAffected);
+
+	        return rowsAffected > 0; // true if session was deleted
+
+	    } catch (SQLException e) {
+	        throw new TaskException(ExceptionMessages.SESSION_DATA_DELETION_FAILED + userId, e);
+	    }
+	}
+
 
 	
 

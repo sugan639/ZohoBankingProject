@@ -24,6 +24,7 @@ public class LoginService {
 
 		HttpSession session = request.getSession(); 
 
+		
     	
     	try {
     		String userIdString = json.getString("user_id");
@@ -80,9 +81,25 @@ public class LoginService {
     private void setSessionData(HttpSession session, long userId, Role role, long epochMilli) throws TaskException {     
  
 
+		SessionData sessionData = new SessionData(); // Data container
+		SessionDAO sessionDao = new SessionDAO();
 
+    	sessionData.setUserId(userId);
+    	sessionData.setSessionID(session.getId());
+    	
+    	System.out.println(session.getId());
+    	sessionData.setRole(role);
+    	sessionData.setStartTime(epochMilli);
+    	// Have to set the sesson data object 
+    	
+    	sessionDao.createDbSession(sessionData);
+    	
    	 
-    //	session.setAttribute("SessionData", sessionData);
+    	session.setAttribute("SessionData", sessionData);
+    	System.out.println("Session inserted");
+    	
+
+    	
     	
     	
     }

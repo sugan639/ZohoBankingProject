@@ -38,10 +38,10 @@ public class ExceptionMessages {
 
 
 	    public static String SESSION_DATA_INSERT_FAILED="Failed to insert session data in database!";
-
-
-
-
+	    public static String SESSION_DATA_DELETION_FAILED= "Failed to delete session for userId: ";
+	    public static String NULL_SESSION_ERROR="Session is null. Cannot delete DB session.";
+	    public static String USER_SESSION_DATA_NOT_FOUND = "SessionData not found in session. Cannot delete DB session.";
+	    public static String DB_SESSION_DATA_NOT_FOUND = "No session found in DB to delete for user ID: " ;
 
 
 

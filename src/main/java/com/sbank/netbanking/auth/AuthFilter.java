@@ -14,7 +14,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import com.sbank.netbanking.exceptions.TaskException;
-import com.sbank.netbanking.model.SessionData;
 import com.sbank.netbanking.service.SessionService;
 
 @WebFilter("/*")
@@ -34,29 +33,23 @@ public class AuthFilter implements Filter {
         SessionService sessionService = new SessionService();
 
         HttpSession session = httpRequest.getSession(false); // Don't create new session if there is no session present
-        ////
-        SessionData userSessionData = new SessionData();
 
-        userSessionData = (SessionData) session.getAttribute("SessionData");
+        String path = httpRequest.getRequestURI().substring(httpRequest.getContextPath().length());
 
-        long userId = userSessionData.getUserId();
-        ///
+        System.out.println("Intercepted path: " + path);
+        System.out.println("Session ID: " + (session != null ? session.getId() : "No session"));
+
+        // Skip authentication for login/logout
+        if (isPublicRoute(path) && session == null) {		// Allow all for testing
+            chain.doFilter(request, response);
+            return;
+        }
         
-//        String path = httpRequest.getRequestURI().substring(httpRequest.getContextPath().length());
-//
-//        System.out.println("Intercepted path: " + path);
-//        System.out.println("Session ID: " + (session != null ? session.getId() : "No session"));
-//
-//        // Skip authentication for login/logout
-//        if (isPublicRoute(path) && session == null) {		// Allow all for testing
-//            chain.doFilter(request, response);
-//            return;
-//        }
-//        
-//        if(session==null) {
-//        	System.out.println("Null session");
-//        }
+        if(session==null) {
+        	System.out.println("Null session");
+        }
 
+       
         
         // Check if user is authenticated
         if (session != null && sessionService.sessionValidator(session)) {
