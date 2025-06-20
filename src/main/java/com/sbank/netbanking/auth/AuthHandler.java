@@ -3,9 +3,9 @@ package com.sbank.netbanking.auth;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 
 import org.json.JSONObject;
 
@@ -15,6 +15,7 @@ import com.sbank.netbanking.exceptions.ExceptionMessages;
 import com.sbank.netbanking.exceptions.TaskException;
 import com.sbank.netbanking.service.LoginService;
 import com.sbank.netbanking.service.SessionService;
+import com.sbank.netbanking.util.CookieUtil;
 import com.sbank.netbanking.util.PojoJsonConverter;
 import com.sbank.netbanking.util.RequestJsonConverter;
 
@@ -31,20 +32,16 @@ public class AuthHandler {
 
 		System.out.println("Request reached login method");
 		
-			// Request to json formating
+		// Request to json formating
 	    JSONObject json = reader.convertToJson(req);  
 
         // Returns user DTO object if credentials are correct else null
-        userDataDto = loginService.validator(json, req); 
-        
-        
-        
-	    
+        userDataDto = loginService.validator(json, req,res); 
+
         try { 
         	
 	    if(userDataDto!=null) { 
-	
-	    	
+
 		   JSONObject jsonResponse = pojoToJson.pojoToJson(userDataDto);
 		   res.setContentType("application/json");
 		   PrintWriter out = res.getWriter();
@@ -63,15 +60,41 @@ public class AuthHandler {
 	    
 	    
 	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 
 	// Logout method
 	public void logout(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-	    HttpSession session = req.getSession(false);
-	    SessionService sessionService = new SessionService();
-	    if (session != null) {
-	        session.invalidate(); // End session
-	        sessionService.invalidateDbSession(session);
-	        
+		
+        CookieUtil cookieUtil = new CookieUtil();
+        String sessionId = cookieUtil.getSessionIdFromCookies(req);
+
+ 	    SessionService sessionService = new SessionService();
+
+ 	    if (sessionId != null) {
+	      
+	        sessionService.deleteDbCookies(sessionId);
+	        // Clear the cookie from browser
+	        Cookie cookie = new Cookie("BANK_SESSION_ID", "");
+	        cookie.setHttpOnly(true);
+	        cookie.setSecure(true); 
+	        cookie.setPath("/");
+	        cookie.setMaxAge(0); // Tells browser to delete cookies immediately
+	        res.addCookie(cookie);
+	      
 	    }
 
 	    try {
@@ -89,3 +112,23 @@ public class AuthHandler {
 	    
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,12 +1,12 @@
 package com.sbank.netbanking.model;
-import com.sbank.netbanking.model.User.Role;
 
 public class SessionData {
     private long userId;
     private String sessionID;
-    private Role role;
     private long startTime;
+    private long expiryDuration;
 	 
+
 
 	public long getUserId() {
 		return userId;
@@ -24,13 +24,6 @@ public class SessionData {
 		this.sessionID = sessionID;
 	}
 
-	public Role getRole() {
-		return role;
-	}
-
-	public void setRole(Role role) {
-		this.role = role;
-	}
 
 	public long getStartTime() {
 		return startTime;
@@ -39,7 +32,15 @@ public class SessionData {
 	public void setStartTime(long startTime) {
 		this.startTime = startTime;
 	}
-	
+
+	public long getExpiryDuration() {
+		return expiryDuration;
+	}
+
+	public void setExpiryDuration(long expiryDuration) {
+		this.expiryDuration = expiryDuration;
+	}
+
 
 
 

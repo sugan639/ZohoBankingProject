@@ -1,109 +1,103 @@
 package com.sbank.netbanking.service;
 
-import java.util.Enumeration;
-
-import javax.servlet.http.HttpSession;
-
 import com.sbank.netbanking.dao.SessionDAO;
 import com.sbank.netbanking.exceptions.ExceptionMessages;
 import com.sbank.netbanking.exceptions.TaskException;
 import com.sbank.netbanking.model.SessionData;
+import com.sbank.netbanking.util.CheckTimeout;
 
 public class SessionService {
 	
 	
 	
-	public boolean sessionValidator(HttpSession session ) throws TaskException {
+	public boolean sessionValidator(String sessionId ) throws TaskException {
 		
-		
+		if (sessionId == null || sessionId.isEmpty()) {
+            System.out.println("Session ID is null or empty.");
+            return false;
+        }
 		
 		SessionDAO sessionDao = new SessionDAO();
-		SessionData userSessionData = new SessionData();
 		SessionData dbSessionData = new SessionData();
-		
-		
-		userSessionData = (SessionData) session.getAttribute("SessionData");
 
-		if(session!=null) {
-            System.out.println( "Session is not NULL on sessionValidator");
 
-		}
-		
-		
-		
-		long userId = userSessionData.getUserId();
-		String userSessionId = userSessionData.getSessionID();  // These two lines are causing NULLPointer Exception
-		
-		
-    	System.out.println("UserID: " + userId);
-    	System.out.println("sessionID: " + userSessionId);
-
-    	dbSessionData = sessionDao.getSessionData(userId);
+    	dbSessionData = sessionDao.getSessionData(sessionId);
     	
     	String dbSessionId = dbSessionData.getSessionID() ;
-		
+    	
+    	CheckTimeout checkTimeout =  new CheckTimeout(); 
+    	if(checkTimeout.isTimeOut(dbSessionData)) {
+    		return false;
+    	}
+    	
+        // Sliding session: Update start_time to current time
+        boolean updated = sessionDao.updateSessionStartTime(sessionId, System.currentTimeMillis());
+        if (!updated) {
+            System.out.println("Failed to update session start time.");
+            return false;
+        }
 
-    	if (userSessionId != null && userSessionId.equals(dbSessionId)) {
+
+    	if (dbSessionId != null) {
+
+    		
     	    return true;
     	}
     	
     	System.out.println("==============================");
         System.out.println("Data base session ID: "+dbSessionId );
-        System.out.println("User session ID: "+userSessionId);
     	System.out.println("==============================");
 
 		
 		return false;
 	}
 	
-	public void invalidateDbSession(HttpSession session) throws TaskException {
-	    if (session == null) {
-	        throw new TaskException(ExceptionMessages.NULL_SESSION_ERROR);
+	
+	
+	
+	public void deleteDbCookies(String sessionId) throws TaskException {
+	    if (sessionId == null) {
+	        throw new TaskException(ExceptionMessages.NULL_SESSIONID_ERROR);
 	    }
 
-	    SessionData sessionData = (SessionData) session.getAttribute("SessionData");
-
-	    if (sessionData == null) {
-	        throw new TaskException(ExceptionMessages.USER_SESSION_DATA_NOT_FOUND);
-	    }
-
-	    long userId = sessionData.getUserId();
-
+	    System.out.println("Reached the session invalidation method. ");
+	    
 	    SessionDAO sessionDao = new SessionDAO();
-	    boolean deleted = sessionDao.deleteSessionByUserId(userId);
+	    boolean deleted = sessionDao.deleteSessionByUserId(sessionId);
 
 	    if (!deleted) {
-	        throw new TaskException(ExceptionMessages.DB_SESSION_DATA_NOT_FOUND + userId);
+	        throw new TaskException(ExceptionMessages.DB_SESSION_DATA_NOT_FOUND + sessionId);
 	    }
+	    
+	    System.out.println("Session cookie deletion method completed !");
 
-	    // Invalidate in-memory session too
-	    session.invalidate();
+
 	}
 
 	
-	public void printSessionData(HttpSession session) {
-	    if (session == null) {
-	        System.out.println("Session is null.");
-	        return;
-	    }
-
-	    System.out.println("Session ID: " + session.getId());
-
-	    Enumeration<String> attributeNames = session.getAttributeNames();
-
-	    if (!attributeNames.hasMoreElements()) {
-	        System.out.println("No attributes in session.");
-	        return;
-	    }
-
-	    System.out.println("Session Attributes:");
-	    while (attributeNames.hasMoreElements()) {
-	        String name = attributeNames.nextElement();
-	        Object value = session.getAttribute(name);
-	        System.out.println(name + " = " + value);
-	    }
-	}
 
 
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
