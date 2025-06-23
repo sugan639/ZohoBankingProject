@@ -43,25 +43,24 @@ public class SessionDAO {
 	
 	
 	public void createDbSession(SessionData sessionData) throws TaskException {
-	    String sql = "INSERT INTO session (session_id, user_id, start_time, expiry_duration) VALUES (?, ?, ?, ?)";
+		String sql = "INSERT INTO session (session_id, user_id, start_time, expiry_duration) " +
+                "VALUES (?, ?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE session_id = VALUES(session_id), start_time = VALUES(start_time), expiry_duration = VALUES(expiry_duration)";
 
-	    try (PreparedStatement pstmt = prepareStatement(sql)) {
-	        pstmt.setString(1, sessionData.getSessionID());
-	        pstmt.setLong(2, sessionData.getUserId());
-	        pstmt.setLong(3, sessionData.getStartTime());
-	        pstmt.setLong(4, sessionData.getExpiryDuration());
+   try (PreparedStatement pstmt = prepareStatement(sql)) {
+       pstmt.setString(1, sessionData.getSessionID());
+       pstmt.setLong(2, sessionData.getUserId());
+       pstmt.setLong(3, sessionData.getStartTime());
+       pstmt.setLong(4, sessionData.getExpiryDuration());
 
-	        int rowsInserted = pstmt.executeUpdate();
-	        if (rowsInserted == 0) {
-	            throw new TaskException(ExceptionMessages.ROW_INSERTION_FAILED);
-	        }
-	    } catch (SQLException e) {
-	        throw new TaskException(ExceptionMessages.SESSION_DATA_INSERT_FAILED, e);
-	    }
+       pstmt.executeUpdate();
+   } catch (SQLException e) {
+       throw new TaskException("Failed to insert/update session", e);
+   }
 	}
 	
 	
-	public boolean deleteSessionByUserId(String sessionId) throws TaskException {
+	public boolean deleteSessionBySessionId(String sessionId) throws TaskException {
 	    String query = "DELETE FROM session WHERE session_id = ?";
 	    
 	    try (PreparedStatement stmt = prepareStatement(query)) {

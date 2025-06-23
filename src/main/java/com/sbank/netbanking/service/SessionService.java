@@ -63,7 +63,7 @@ public class SessionService {
 	    System.out.println("Reached the session invalidation method. ");
 	    
 	    SessionDAO sessionDao = new SessionDAO();
-	    boolean deleted = sessionDao.deleteSessionByUserId(sessionId);
+	    boolean deleted = sessionDao.deleteSessionBySessionId(sessionId);
 
 	    if (!deleted) {
 	        throw new TaskException(ExceptionMessages.DB_SESSION_DATA_NOT_FOUND + sessionId);
