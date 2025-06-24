@@ -3,7 +3,6 @@ package com.sbank.netbanking.controller;
 
 
 import java.io.IOException;
-import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -14,12 +13,13 @@ import com.sbank.netbanking.util.RequestParser;
 
 public class RequestRouter {
 
-	RouteRegistry routeRegistry = new RouteRegistry();
-	RequestParser requestParser = new RequestParser();
-	
 	
     public void route(HttpServletRequest request, HttpServletResponse response, String method) throws Exception {
        
+
+    	RouteRegistry routeRegistry = new RouteRegistry();
+    	RequestParser requestParser = new RequestParser();
+    	
     	
     		
     	String fullPath = request.getPathInfo();
@@ -42,7 +42,7 @@ public class RequestRouter {
 
         	
         	if(method == "GET" || method == "POST" || method == "DELETE") {
-        	Map<String,String > params = requestParser.paramParser(fullPath);
+       // 	Map<String,String > params = requestParser.paramParser(fullPath); commented as of now.
         	
         }
         	

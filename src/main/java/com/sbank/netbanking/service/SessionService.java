@@ -10,11 +10,11 @@ public class SessionService {
 	
 	
 	
-	public boolean sessionValidator(String sessionId ) throws TaskException {
+	public SessionData sessionValidator(String sessionId ) throws TaskException {
 		
 		if (sessionId == null || sessionId.isEmpty()) {
             System.out.println("Session ID is null or empty.");
-            return false;
+            return null;
         }
 		
 		SessionDAO sessionDao = new SessionDAO();
@@ -27,21 +27,21 @@ public class SessionService {
     	
     	CheckTimeout checkTimeout =  new CheckTimeout(); 
     	if(checkTimeout.isTimeOut(dbSessionData)) {
-    		return false;
+    		return null;
     	}
     	
         // Sliding session: Update start_time to current time
         boolean updated = sessionDao.updateSessionStartTime(sessionId, System.currentTimeMillis());
         if (!updated) {
             System.out.println("Failed to update session start time.");
-            return false;
+            return null;
         }
 
 
     	if (dbSessionId != null) {
 
     		
-    	    return true;
+    	    return dbSessionData;
     	}
     	
     	System.out.println("==============================");
@@ -49,7 +49,7 @@ public class SessionService {
     	System.out.println("==============================");
 
 		
-		return false;
+		return null;
 	}
 	
 	

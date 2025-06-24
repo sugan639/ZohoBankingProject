@@ -1,6 +1,7 @@
 package com.sbank.netbanking.auth;
 
 import java.io.IOException;
+import java.util.logging.Logger;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -11,9 +12,12 @@ import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.sbank.netbanking.dto.ErrorResponse;
 import com.sbank.netbanking.exceptions.TaskException;
+import com.sbank.netbanking.model.SessionData;
 import com.sbank.netbanking.service.SessionService;
 import com.sbank.netbanking.util.CookieUtil;
+import com.sbank.netbanking.util.ErrorResponseUtil;
 
 @WebFilter("/*")
 public class AuthFilter implements Filter {
@@ -29,6 +33,9 @@ public class AuthFilter implements Filter {
 
         String path = httpRequest.getRequestURI().substring(httpRequest.getContextPath().length());
         System.out.println("Intercepted path: " + path);
+        
+        final Logger logger = Logger.getLogger(AuthFilter.class.getName());
+        logger.info("This is a test log message.");
 
         try {
             if (isPublicRoute(path)) {
@@ -39,20 +46,25 @@ public class AuthFilter implements Filter {
             CookieUtil cookieUtil = new CookieUtil();
             String sessionId = cookieUtil.getSessionIdFromCookies(httpRequest);
             if (sessionId == null) {
-                respondUnauthorized(httpResponse, "Missing session cookie");
-                return;
+            	 ErrorResponseUtil.send(httpResponse, HttpServletResponse.SC_UNAUTHORIZED,
+                         new ErrorResponse("Unauthorized", 401, "Missing session cookie"));
+                     return;
             }
+            
+            SessionData sessionData =  new SessionData();
+            sessionData =  sessionService.sessionValidator(sessionId); // Returns session data if valid session exists
 
-            if (sessionService.sessionValidator(sessionId)) {
+            if (sessionData != null) {
+            	request.setAttribute("sessionData", sessionData); // Setting sessionID as request attribute
                 chain.doFilter(request, response);
             } else {
-                respondUnauthorized(httpResponse, "Session expired or invalid");
+            	 ErrorResponseUtil.send(httpResponse, HttpServletResponse.SC_UNAUTHORIZED,
+                         new ErrorResponse("Unauthorized", 401, "Session expired or invalid"));
             }
 
         } catch (TaskException e) {
-            httpResponse.setContentType("application/json");
-            httpResponse.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            httpResponse.getWriter().write(String.format("{\"error\": \"TaskException\", \"message\": \"%s\"}", e.getMessage()));
+        	 ErrorResponseUtil.send(httpResponse, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                     new ErrorResponse("TaskException", 500, e.getMessage()));
         }
     }
 
@@ -62,11 +74,5 @@ public class AuthFilter implements Filter {
                path.startsWith("/auth/register");
     }
 
-
-
-    private void respondUnauthorized(HttpServletResponse response, String message) throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("application/json");
-        response.getWriter().write(String.format("{\"error\": \"Unauthorized\", \"message\": \"%s\"}", message));
-    }
+   
 }

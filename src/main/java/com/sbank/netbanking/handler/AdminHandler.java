@@ -1,15 +1,47 @@
 package com.sbank.netbanking.handler;
 
+import java.io.IOException;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
+
+import org.json.JSONObject;
+
+import com.sbank.netbanking.dao.AdminDAO;
+import com.sbank.netbanking.exceptions.TaskException;
+import com.sbank.netbanking.model.Admin;
+import com.sbank.netbanking.model.SessionData;
+import com.sbank.netbanking.util.PojoJsonConverter;
 
 public class AdminHandler {
 
     // GET /admin/profile/{user_id}
-    public void getProfile(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"AdminHandler.getProfile not implemented\"}");
-    }
+    public void getProfile(HttpServletRequest req, HttpServletResponse res) throws IOException, TaskException {
+
+	    SessionData sessionData =  new SessionData();
+	    sessionData = (SessionData) req.getAttribute("sessionData");
+        long adminId = sessionData.getUserId();
+      
+        System.out.println("User ID from the session data get profile method: "+adminId);
+        AdminDAO adminDAO = new AdminDAO();
+        PojoJsonConverter converter = new PojoJsonConverter();
+
+        try {
+            Admin admin = adminDAO.getAdminById(adminId);
+            if (admin != null) {
+                JSONObject jsonAdmin = converter.pojoToJson(admin);
+                res.setContentType("application/json");
+                res.getWriter().write(jsonAdmin.toString());
+            } else {
+                res.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                res.getWriter().write("{\"error\":\"Admin not found\", \"code\":404}");
+            }
+        } catch (TaskException e) {
+            res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            res.getWriter().write(String.format("{\"error\": \"%s\"}", e.getMessage()));
+        }
+      }
+    // 
 
     // GET /admin/branches/{branch_id}
     public void getBranchById(HttpServletRequest req, HttpServletResponse res) throws IOException {
@@ -19,11 +51,6 @@ public class AdminHandler {
     // PUT /admin/branches/{branch_id}
     public void updateBranch(HttpServletRequest req, HttpServletResponse res) throws IOException {
         res.getWriter().write("{\"status\":\"AdminHandler.updateBranch not implemented\"}");
-    }
-
-    // GET /admin/branches/requests
-    public void getBranchRequests(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"AdminHandler.getBranchRequests not implemented\"}");
     }
 
     // GET /admin/users/{user_id}

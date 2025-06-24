@@ -2,13 +2,14 @@
 package com.sbank.netbanking.dbconfig;
 
 import java.sql.Connection;
+
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
 import com.sbank.netbanking.exceptions.ExceptionMessages;
 import com.sbank.netbanking.exceptions.TaskException;
 
-public class ConnectionManager {
+public class ConnectionManager implements AutoCloseable {
 
     private Connection connection;
 
@@ -45,4 +46,11 @@ public class ConnectionManager {
             }
         }
     }
+
+	@Override
+	public void close() throws Exception {
+		// TODO Auto-generated method stub
+		stopConnection();
+		
+	}
 }

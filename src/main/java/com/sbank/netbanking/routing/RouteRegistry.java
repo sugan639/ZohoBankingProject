@@ -49,7 +49,7 @@ public class RouteRegistry {
         routes.add(new Route("GET", "/admin/profile", adminHandler::getProfile));
         routes.add(new Route("GET", "/admin/branches", adminHandler::getBranchById));
         routes.add(new Route("PUT", "/admin/branches", adminHandler::updateBranch));
-        routes.add(new Route("GET", "/admin/branches/requests", adminHandler::getBranchRequests));
+     //   routes.add(new Route("GET", "/admin/branches/requests", adminHandler::getBranchRequests));
         routes.add(new Route("GET", "/admin/users", adminHandler::getUser));
         routes.add(new Route("PUT", "/admin/users", adminHandler::updateUser));
         routes.add(new Route("POST", "/admin/transactions/deposit", adminHandler::deposit));

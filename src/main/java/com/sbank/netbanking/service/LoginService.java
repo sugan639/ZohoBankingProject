@@ -32,7 +32,7 @@ public class LoginService {
             UserDAO loginDAO = new UserDAO();
             User user = loginDAO.getUserById(userId); // Getting user data from database
 
-            if (user != null && BcryptService.isPasswordMatch(passwordInput, user.getPassword())) { 
+            if (user != null && BcryptService.isPasswordMatch(passwordInput, user.getPassword())) {
                 UserMapper userMapper = new UserMapper();
                 UserDTO userDataDto = userMapper.toUserDTO(user);
 

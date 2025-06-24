@@ -1,7 +1,6 @@
 package com.sbank.netbanking.dao;
 
 import java.sql.Connection;
-
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -19,13 +18,15 @@ public class UserDAO {
     public User getUserById(long userId) throws TaskException {
     	
         String sql = "SELECT * FROM users WHERE user_id = ?";
-        
 
-        connectionManager.initConnection();
-        Connection conn = connectionManager.getConnection();
         
-        try (PreparedStatement stmt = conn.prepareStatement(sql)){
+        try (ConnectionManager connectionManager = new ConnectionManager()){
+        		connectionManager.initConnection();
+                Connection conn = connectionManager.getConnection();  
+                
+        	try(PreparedStatement stmt = conn.prepareStatement(sql)){
         	
+        		
         	 stmt.setLong(1, userId);
            
 
@@ -53,19 +54,22 @@ public class UserDAO {
            }
 
         }
+        	}
         
         catch (SQLException e) {
         	
             throw new TaskException(ExceptionMessages.USERDATA_RETRIEVAL_FAILED, e);
-        } 
-        finally {
-           
-            connectionManager.stopConnection();
         }
+        catch (Exception e) {
+        	
+            throw new TaskException(ExceptionMessages.USERDATA_RETRIEVAL_FAILED, e);
+        } 
+
     }
     
-
     
+
+
     
     
     
