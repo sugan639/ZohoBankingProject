@@ -10,7 +10,7 @@ public class RequestParser {
 	
     public String pathParser(String fullPath) throws TaskException {    // Path parser
         if (fullPath == null || fullPath.isEmpty()) {
-            throw new TaskException("Request path cannot be null or empty");
+            return null;
         }
         int queryIndex = fullPath.indexOf("?");
         return (queryIndex == -1) ? fullPath : fullPath.substring(0, queryIndex);

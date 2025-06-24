@@ -3,6 +3,7 @@ package com.sbank.netbanking.controller;
 
 
 import java.io.IOException;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -41,8 +42,9 @@ public class RequestRouter {
         	System.out.println("==============================");
 
         	
-        	if(method == "GET" || method == "POST" || method == "DELETE") {
-       // 	Map<String,String > params = requestParser.paramParser(fullPath); commented as of now.
+        	if(method == "GET" || method == "PUT" || method == "DELETE") {
+        	Map<String,String > params = requestParser.paramParser(fullPath);
+        	request.setAttribute("pathParameters", params);
         	
         }
         	
@@ -63,6 +65,8 @@ public class RequestRouter {
         response.setContentType("application/json");
         response.getWriter().write(String.format("{\"error\": \"%s\", \"code\": %d}", message, code));
     }
+    
+
 
 }
 

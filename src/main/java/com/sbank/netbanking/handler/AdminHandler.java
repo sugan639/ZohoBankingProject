@@ -8,15 +8,17 @@ import javax.servlet.http.HttpServletResponse;
 import org.json.JSONObject;
 
 import com.sbank.netbanking.dao.AdminDAO;
+import com.sbank.netbanking.dao.BranchDAO;
 import com.sbank.netbanking.exceptions.TaskException;
 import com.sbank.netbanking.model.Admin;
+import com.sbank.netbanking.model.Branch;
 import com.sbank.netbanking.model.SessionData;
 import com.sbank.netbanking.util.PojoJsonConverter;
 
 public class AdminHandler {
 
-    // GET /admin/profile/{user_id}
-    public void getProfile(HttpServletRequest req, HttpServletResponse res) throws IOException, TaskException {
+
+	public void getProfile(HttpServletRequest req, HttpServletResponse res) throws IOException, TaskException {
 
 	    SessionData sessionData =  new SessionData();
 	    sessionData = (SessionData) req.getAttribute("sessionData");
@@ -41,12 +43,49 @@ public class AdminHandler {
             res.getWriter().write(String.format("{\"error\": \"%s\"}", e.getMessage()));
         }
       }
-    // 
+    
 
-    // GET /admin/branches/{branch_id}
-    public void getBranchById(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"AdminHandler.getBranchById not implemented\"}");
-    }
+	// GET /admin/branches/{branch_id}
+	public void getBranchById(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+	    try {
+	    	
+	        String branchIdStr = req.getParameter("branchId");
+
+	        if (branchIdStr == null || branchIdStr.isEmpty()) {
+	            throw new TaskException("Missing or invalid 'branchId' in query parameters.");
+	        }
+
+	        long branchId;
+	        try {
+	            branchId = Long.parseLong(branchIdStr);
+	        } catch (NumberFormatException e) {
+	            throw new TaskException("Invalid branch ID format. Must be a number.", e);
+	        }
+
+	       
+
+
+	        Branch branch = new Branch();
+	        BranchDAO branchDao = new BranchDAO();
+
+	        
+	        branch = branchDao.getBranchById(branchId);  // Branch POJO
+	        System.out.println("Branch ID from the GET request data @ getBranch method: "+branchId);
+
+	        PojoJsonConverter converter = new PojoJsonConverter();
+	        JSONObject jsonBranch = converter.pojoToJson(branch); // Branch JSON
+
+	       
+	        res.setContentType("application/json");
+	        res.getWriter().write(jsonBranch.toString());
+
+	    } catch (NumberFormatException e) {
+	        throw new TaskException("Invalid branch ID format", e);
+	    } catch (IOException e) {
+	        throw new TaskException("Failed to write branch response", e);
+	    }
+	}
+
 
     // PUT /admin/branches/{branch_id}
     public void updateBranch(HttpServletRequest req, HttpServletResponse res) throws IOException {

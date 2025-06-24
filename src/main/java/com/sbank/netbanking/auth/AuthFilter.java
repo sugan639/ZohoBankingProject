@@ -1,7 +1,6 @@
 package com.sbank.netbanking.auth;
 
 import java.io.IOException;
-import java.util.logging.Logger;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -34,9 +33,6 @@ public class AuthFilter implements Filter {
         String path = httpRequest.getRequestURI().substring(httpRequest.getContextPath().length());
         System.out.println("Intercepted path: " + path);
         
-        final Logger logger = Logger.getLogger(AuthFilter.class.getName());
-        logger.info("This is a test log message.");
-
         try {
             if (isPublicRoute(path)) {
                 chain.doFilter(request, response);
