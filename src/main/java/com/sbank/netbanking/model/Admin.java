@@ -13,6 +13,7 @@ public class Admin {
 	    private long createdAt;
 	    private long modifiedAt;
 	    private long modifiedBy;
+	    
 		public long getEmployeeId() {
 			return employeeId;
 		}

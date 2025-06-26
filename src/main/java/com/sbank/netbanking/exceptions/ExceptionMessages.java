@@ -3,7 +3,7 @@ package com.sbank.netbanking.exceptions;
 
 public class ExceptionMessages {
 
-	 // Error messages
+		// Error messages
 	    public static String NULL_INPUT_ERROR = "Input strings are null";
 	    public static String LENGTH_ERROR = "String length is very less than required length!";
 	    public static String NEGATIVE_VALUE_ERROR = "Index or length cannot be negative";
@@ -25,7 +25,9 @@ public class ExceptionMessages {
 	    public static String DB_KEY_MISSING = "DB Key not found";
 	    public static String CONNECTION_INIT_FAILED = "Connection initiation failed";
 	    public static String CONNECTION_CLOSE_FAILED =  "Connection closing failed";
-	    
+		public static final String DATABASE_CONNECTION_FAILED = "Database connection failed.";
+		public static final String USERDATA_UPDATE_FAILED = "Unable to update user data";
+
 	    public static String USERDATA_RETRIEVAL_FAILED = "User data retrieval failed";
 	    public static String REQUEST_PARSE_TO_JSON_FAILED =  "Request parsing to JSON failed";
 	    public static String POJO_NULL_EXCEPTION = "POJO object is NULL";

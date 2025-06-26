@@ -11,14 +11,19 @@ public class JsonReader {
 	public JSONObject readJSON(HttpServletRequest request) throws IOException {
 	    StringBuilder sb = new StringBuilder();
 	    String line;
+
 	    try (BufferedReader reader = request.getReader()) {
 	        while ((line = reader.readLine()) != null) {
-	            sb.append(line);
+	            sb.append(line.trim());
 	        }
 	    }
-	    
-	    
-	    
-	    return new JSONObject(sb.toString());
+
+	    String body = sb.toString();
+	    if (body.isEmpty()) {
+	        throw new IOException("Request body is empty");
+	    }
+
+	    return new JSONObject(body);
 	}
+
 }

@@ -4,6 +4,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.sbank.netbanking.dbconfig.ConnectionManager;
 import com.sbank.netbanking.exceptions.ExceptionMessages;
@@ -67,7 +69,49 @@ public class UserDAO {
 
     }
     
-    
+    public void updateUserFields(Long userId, String name, String email, Long mobileNumber, Long modifiedBy) throws TaskException {
+        if (name == null && email == null && mobileNumber == null) {
+            // Nothing meaningful to update
+            return;
+        }
+
+        StringBuilder sql = new StringBuilder("UPDATE users SET ");
+        List<Object> params = new ArrayList<>();
+
+        if (name != null) {
+            sql.append("name = ?, ");
+            params.add(name);
+        }
+        if (email != null) {
+            sql.append("email = ?, ");
+            params.add(email);
+        }
+        if (mobileNumber != null) {
+            sql.append("mobile_number = ?, ");
+            params.add(mobileNumber);
+        }
+
+        sql.append("modified_at = ?, modified_by = ? WHERE user_id = ?");
+        params.add(System.currentTimeMillis());
+        params.add(modifiedBy);
+        params.add(userId);
+
+        try (ConnectionManager connectionManager = new ConnectionManager()) {
+            connectionManager.initConnection();
+            Connection conn = connectionManager.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+                for (int i = 0; i < params.size(); i++) {
+                    stmt.setObject(i + 1, params.get(i));
+                }
+                stmt.executeUpdate();
+            }
+        } catch (SQLException e) {
+            throw new TaskException("Failed to update user data", e);
+        } catch (Exception e) {
+            throw new TaskException(ExceptionMessages.USERDATA_UPDATE_FAILED, e);
+        }
+    }
+
 
 
     

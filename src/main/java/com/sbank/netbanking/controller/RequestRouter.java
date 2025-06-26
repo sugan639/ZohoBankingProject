@@ -3,7 +3,6 @@ package com.sbank.netbanking.controller;
 
 
 import java.io.IOException;
-import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -38,15 +37,11 @@ public class RequestRouter {
         	String path = requestParser.pathParser(fullPath);  // Parses the path from the URI
         	System.out.println("==============================");
             System.out.println(fullPath + " on RequestRouter");
-            System.out.println(fullPath);
+            String uripath = request.getRequestURI();
+            System.out.println("Requested URI Path: "+uripath);
+            
         	System.out.println("==============================");
 
-        	
-        	if(method == "GET" || method == "PUT" || method == "DELETE") {
-        	Map<String,String > params = requestParser.paramParser(fullPath);
-        	request.setAttribute("pathParameters", params);
-        	
-        }
         	
         
 

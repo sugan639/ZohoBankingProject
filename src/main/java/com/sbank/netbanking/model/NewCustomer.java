@@ -1,7 +1,9 @@
 package com.sbank.netbanking.model;
 
-public class Customer {
+public class NewCustomer {
+
     private long customerId;
+    private String newPassword;
     private String name;
     private String email;
     private long mobileNumber;
@@ -11,16 +13,20 @@ public class Customer {
     private String panNumber;
     private String role;
     private long createdAt;
-	private long modifiedAt;
+    private long modifiedAt;
     private long modifiedBy;
-    
-    
     
 	public long getCustomerId() {
 		return customerId;
 	}
 	public void setCustomerId(long customerId) {
 		this.customerId = customerId;
+	}
+	public String getPassword() {
+		return newPassword;
+	}
+	public void setPassword(String password) {
+		this.newPassword = password;
 	}
 	public String getName() {
 		return name;
@@ -70,6 +76,12 @@ public class Customer {
 	public void setRole(String role) {
 		this.role = role;
 	}
+	public long getCreatedAt() {
+		return createdAt;
+	}
+	public void setCreatedAt(long createdAt) {
+		this.createdAt = createdAt;
+	}
 	public long getModifiedAt() {
 		return modifiedAt;
 	}
@@ -83,15 +95,4 @@ public class Customer {
 		this.modifiedBy = modifiedBy;
 	}
 
-	
-
-    public long getCreatedAt() {
-		return createdAt;
-	}
-	public void setCreatedAt(long createdAt) {
-		// TODO Auto-generated method stub
-		this.createdAt = createdAt;
-		
-	}
-    
 }

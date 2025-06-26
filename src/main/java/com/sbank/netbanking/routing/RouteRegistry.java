@@ -43,7 +43,7 @@ public class RouteRegistry {
         routes.add(new Route("POST", "/employee/transactions/deposit", employeeHandler::deposit));
         routes.add(new Route("POST", "/employee/transactions/withdraw", employeeHandler::withdraw));
         routes.add(new Route("POST", "/employee/transactions/transfer", employeeHandler::transfer));
-        routes.add(new Route("POST", "/employee/newAccount", employeeHandler::createAccount));
+        routes.add(new Route("POST", "/employee/new-account", employeeHandler::createAccount));
 
         // Admin
         routes.add(new Route("GET", "/admin/profile", adminHandler::getProfile));
@@ -51,13 +51,15 @@ public class RouteRegistry {
         routes.add(new Route("PUT", "/admin/branches", adminHandler::updateBranch));
      //   routes.add(new Route("GET", "/admin/branches/requests", adminHandler::getBranchRequests));
         routes.add(new Route("GET", "/admin/users", adminHandler::getUser));
-        routes.add(new Route("PUT", "/admin/users", adminHandler::updateUser));
+        routes.add(new Route("PUT", "/admin/users/update", adminHandler::updateUser));
         routes.add(new Route("POST", "/admin/transactions/deposit", adminHandler::deposit));
         routes.add(new Route("POST", "/admin/transactions/withdraw", adminHandler::withdraw));
         routes.add(new Route("POST", "/admin/transactions/transfer", adminHandler::transfer));
-        routes.add(new Route("POST", "/admin/newAccount", adminHandler::createAccount));
-        routes.add(new Route("POST", "/admin/employee", adminHandler::addEmployee));
-        
+        routes.add(new Route("POST", "/admin/customer/new-account", adminHandler::createAccount));
+        routes.add(new Route("POST", "/admin/account/update", adminHandler::updateAccountStatus));
+        routes.add(new Route("POST", "/admin/new-employee", adminHandler::addEmployee));
+        routes.add(new Route("POST", "/admin/new-customer", adminHandler::addCustomer));
+
         
     }
     
