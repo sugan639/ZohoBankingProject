@@ -25,7 +25,7 @@ public class AuthFilter implements Filter {
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-            throws ServletException, IOException {
+            throws ServletException {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         SessionService sessionService = new SessionService();
@@ -58,9 +58,14 @@ public class AuthFilter implements Filter {
                          new ErrorResponse("Unauthorized", 401, "Session expired or invalid"));
             }
 
-        } catch (TaskException e) {
-        	 ErrorResponseUtil.send(httpResponse, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                     new ErrorResponse("TaskException", 500, e.getMessage()));
+        } catch (IOException | TaskException e) {
+        	 try {
+				ErrorResponseUtil.send(httpResponse, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+				         new ErrorResponse("TaskException", 500, e.getMessage()));
+			} catch (TaskException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
         }
     }
 

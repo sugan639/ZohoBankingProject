@@ -10,11 +10,9 @@ import com.sbank.netbanking.dbconfig.ConnectionManager;
 import com.sbank.netbanking.exceptions.ExceptionMessages;
 import com.sbank.netbanking.exceptions.TaskException;
 import com.sbank.netbanking.model.Account;
-import com.sbank.netbanking.model.Account.Status;
+import com.sbank.netbanking.model.Account.AccountStatus;
 import com.sbank.netbanking.model.Employee;
 import com.sbank.netbanking.model.NewCustomer;
-import com.sbank.netbanking.model.Transaction;
-import com.sbank.netbanking.model.Transaction.TransactionType;
 import com.sbank.netbanking.model.User.Role;
 
 public class AdminDAO {
@@ -269,7 +267,7 @@ public class AdminDAO {
 	                acc.setUserId(userId);
 	                acc.setBranchId(branchId);
 	                acc.setBalance(balance);
-	                acc.setStatus(Status.ACTIVE);
+	                acc.setStatus(AccountStatus.ACTIVE);
 	                acc.setCreatedAt(currentTime);
 	                acc.setModifiedAt(currentTime);
 	                acc.setModifiedBy(createdBy);
@@ -334,88 +332,6 @@ public class AdminDAO {
 	
 	
 	
-	
-	
-	
-	
-	public Transaction performDeposit(Long accountNumber, double amount, long doneBy) throws TaskException {
-	    String getAccountSQL = "SELECT balance, user_id, status FROM accounts WHERE account_number = ?";
-	    String updateAccountSQL = "UPDATE accounts SET balance = ?, modified_at = ?, modified_by = ? WHERE account_number = ?";
-	    String insertTransactionSQL = "INSERT INTO transactions (transaction_id, user_id, account_number, transaction_reference_number, amount, type, status, timestamp, done_by, closing_balance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-	    long currentTime = System.currentTimeMillis();
-	    long referenceNumber = currentTime;  // You may use UUIDs or a generator
-	    String status = "SUCCESS";
-	    String type = "DEPOSIT";
-
-	    try (ConnectionManager connectionManager = new ConnectionManager()) {
-	        connectionManager.initConnection();
-	        Connection conn = connectionManager.getConnection();
-
-	        try (
-	            PreparedStatement getAccStmt = conn.prepareStatement(getAccountSQL);
-	            PreparedStatement updateAccStmt = conn.prepareStatement(updateAccountSQL);
-	            PreparedStatement insertTxnStmt = conn.prepareStatement(insertTransactionSQL)
-	        ) {
-	            // 1. Get existing account
-	            getAccStmt.setLong(1, accountNumber);
-	            ResultSet rs = getAccStmt.executeQuery();
-
-	            if (!rs.next()) {
-	                throw new TaskException("Account not found");
-	            }
-
-	            double currentBalance = rs.getDouble("balance");
-	            long userId = rs.getLong("user_id");
-	            String accStatus = rs.getString("status");
-
-	            if (!"ACTIVE".equals(accStatus)) {
-	                throw new TaskException("Account is not active");
-	            }
-
-	            // 2. Update balance
-	            double updatedBalance = currentBalance + amount;
-	            updateAccStmt.setDouble(1, updatedBalance);
-	            updateAccStmt.setLong(2, currentTime);
-	            updateAccStmt.setLong(3, doneBy);
-	            updateAccStmt.setLong(4, accountNumber);
-	            updateAccStmt.executeUpdate();
-
-	            // 3. Insert transaction
-	            insertTxnStmt.setLong(1, 0L); // transaction_id placeholder
-	            insertTxnStmt.setLong(2, userId);
-	            insertTxnStmt.setLong(3, accountNumber);
-	            insertTxnStmt.setLong(4, referenceNumber);
-	            insertTxnStmt.setDouble(5, amount);
-	            insertTxnStmt.setString(6, type);
-	            insertTxnStmt.setString(7, status);
-	            insertTxnStmt.setLong(8, currentTime);
-	            insertTxnStmt.setLong(9, doneBy);
-	            insertTxnStmt.setDouble(10, updatedBalance);
-	            insertTxnStmt.executeUpdate();
-
-	            // Build and return Transaction POJO
-	            Transaction txn = new Transaction();
-	            txn.setAccountNumber(accountNumber);
-	            txn.setUserId(userId);
-	            txn.setTransactionReferenceNumber(referenceNumber);
-	            txn.setAmount(amount);
-	            txn.setType(Transaction.TransactionType.valueOf(type));
-	            txn.setStatus(Transaction.Status.valueOf(status));
-	            txn.setTimestamp(currentTime);
-	            txn.setDoneBy(doneBy);
-	            txn.setClosingBalance(updatedBalance);
-	            return txn;
-
-	        }
-	    } catch (SQLException e) {
-	        throw new TaskException("Failed to perform deposit", e);
-	    } catch (Exception e) {
-	        throw new TaskException(ExceptionMessages.DATABASE_CONNECTION_FAILED, e);
-	    }
-	}
-
-
 
 
 	

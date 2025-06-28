@@ -48,19 +48,29 @@ mysql> CREATE TABLE accounts (
 Query OK, 0 rows affected (0.06 sec)
 
 mysql> CREATE TABLE transactions (
-    ->   transaction_id BIGINT,
-    ->   user_id BIGINT,  -- no longer NOT NULL, and no foreign key constraint
-    ->   account_number BIGINT NOT NULL,
-    ->   transaction_reference_number BIGINT PRIMARY KEY,
-    ->   amount DECIMAL(15,2) NOT NULL,
-    ->   type ENUM('DEPOSIT', 'WITHDRAWAL', 'INTRA_BANK_DEBIT', 'INTRA_BANK_CREDIT', 'INTERBANK_DEBIT', 'INTERBANK_CREDIT') NOT NULL,
-    ->   status ENUM('SUCCESS', 'FAILED'),
-    ->   timestamp BIGINT,
-    ->   done_by BIGINT,
-    ->   closing_balance DECIMAL(15,2) NOT NULL,
-    ->   CONSTRAINT fk_transaction_account FOREIGN KEY (account_number) REFERENCES accounts(account_number)
+    ->     transaction_reference_number BIGINT PRIMARY KEY AUTO_INCREMENT,  -- 18-digit, unique per row
+    ->     transaction_id BIGINT,  -- 15-digit, shared for intra-bank transfer rows
+    ->     account_number BIGINT NOT NULL,
+    ->     amount DECIMAL(15,2) NOT NULL,
+    ->     type ENUM(
+    ->         'DEPOSIT',
+    ->         'WITHDRAWAL',
+    ->         'INTRA_BANK_DEBIT',
+    ->         'INTRA_BANK_CREDIT',
+    ->         'INTERBANK_DEBIT',
+    ->         'INTERBANK_CREDIT'
+    ->     ) NOT NULL,
+    ->     status ENUM('SUCCESS', 'FAILED'),
+    ->     timestamp BIGINT,
+    ->     done_by BIGINT,
+    ->     closing_balance DECIMAL(15,2) NOT NULL,
+    ->     beneficiery_id BIGINT,
+    ->     user_id BIGINT,
+    ->     
+    ->     CONSTRAINT fk_transaction_account FOREIGN KEY (account_number) REFERENCES accounts(account_number),
+    ->     CONSTRAINT fk_transaction_beneficiery FOREIGN KEY (beneficiery_id) REFERENCES beneficiery(beneficiery_unique_number)
     -> );
-Query OK, 0 rows affected (0.05 sec)
+Query OK, 0 rows affected (0.07 sec)
 
 
 mysql> CREATE TABLE beneficiery (

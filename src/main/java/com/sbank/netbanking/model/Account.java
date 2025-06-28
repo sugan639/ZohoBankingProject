@@ -2,7 +2,7 @@ package com.sbank.netbanking.model;
 
 public class Account {
 
-    public enum Status {
+    public enum AccountStatus {
         ACTIVE, INACTIVE
     }
 
@@ -10,7 +10,7 @@ public class Account {
     private long userId;
     private double balance;
     private long branchId;
-    private Status status;
+    private AccountStatus status;
     private long createdAt;
     private long modifiedAt;
     private long modifiedBy;
@@ -47,12 +47,12 @@ public class Account {
         this.branchId = branchId;
     }
 
-    public Status getStatus() {
+    public AccountStatus getStatus() {
         return status;
     }
 
-    public void setStatus(Status status) {
-        this.status = status;
+    public void setStatus(AccountStatus transactionStatus) {
+        this.status = transactionStatus;
     }
 
     public long getCreatedAt() {

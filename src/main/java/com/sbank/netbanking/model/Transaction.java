@@ -11,7 +11,7 @@ public class Transaction {
         INTERBANK_CREDIT
     }
 
-    public enum Status {
+    public enum TransactionStatus {
         SUCCESS,
         FAILED
     }
@@ -22,7 +22,7 @@ public class Transaction {
     private long transactionReferenceNumber;
     private double amount;
     private TransactionType type;      
-    private Status status;  
+    private TransactionStatus status;  
     private long timestamp;
     private long doneBy;
     private double closingBalance;
@@ -63,10 +63,10 @@ public class Transaction {
 	public void setType(TransactionType type) {
 		this.type = type;
 	}
-	public Status getStatus() {
+	public TransactionStatus getStatus() {
 		return status;
 	}
-	public void setStatus(Status status) {
+	public void setStatus(TransactionStatus status) {
 		this.status = status;
 	}
 	public long getTimestamp() {

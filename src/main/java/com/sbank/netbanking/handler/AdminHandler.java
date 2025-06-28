@@ -1,6 +1,7 @@
 package com.sbank.netbanking.handler;
 
 import java.io.IOException;
+import java.sql.SQLException;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -10,6 +11,8 @@ import org.json.JSONObject;
 import com.sbank.netbanking.dao.AdminDAO;
 import com.sbank.netbanking.dao.BranchDAO;
 import com.sbank.netbanking.dao.CustomerDAO;
+import com.sbank.netbanking.dao.TransactionDAO;
+import com.sbank.netbanking.dao.TransactionUtil;
 import com.sbank.netbanking.dao.UserDAO;
 import com.sbank.netbanking.dto.ErrorResponse;
 import com.sbank.netbanking.dto.UserDTO;
@@ -21,6 +24,7 @@ import com.sbank.netbanking.model.Employee;
 import com.sbank.netbanking.model.NewCustomer;
 import com.sbank.netbanking.model.SessionData;
 import com.sbank.netbanking.model.Transaction;
+import com.sbank.netbanking.model.Transaction.TransactionType;
 import com.sbank.netbanking.model.User;
 import com.sbank.netbanking.model.User.Role;
 import com.sbank.netbanking.service.BcryptService;
@@ -34,7 +38,7 @@ import com.sbank.netbanking.util.UserMapper;
 public class AdminHandler {
 
 	// 1. Get admin profile
-	public void getProfile(HttpServletRequest req, HttpServletResponse res) throws IOException, TaskException {
+	public void getProfile(HttpServletRequest req, HttpServletResponse res) throws TaskException {
 
 		
 		
@@ -56,10 +60,12 @@ public class AdminHandler {
                 res.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 res.getWriter().write("{\"error\":\"Admin not found\", \"code\":404}");
             }
-        } catch (TaskException e) {
-            res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            res.getWriter().write(String.format("{\"error\": \"%s\"}", e.getMessage()));
+        } catch (IOException e) {
+        	  ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+      	            new ErrorResponse("TaskException", 500, e.getMessage()));
         }
+        
+        
       }
     
 
@@ -107,7 +113,7 @@ public class AdminHandler {
 	}
 
 	// 3. PATCH /admin/branches     // Working
-	public void updateBranch(HttpServletRequest req, HttpServletResponse res) throws IOException {
+	public void updateBranch(HttpServletRequest req, HttpServletResponse res) throws TaskException {
 	    try {
 	        RequestJsonConverter requestJsonConverter = new RequestJsonConverter();
 	        JSONObject json = requestJsonConverter.convertToJson(req);
@@ -142,7 +148,7 @@ public class AdminHandler {
 	            ErrorResponseUtil.send(res, HttpServletResponse.SC_NOT_FOUND, error);
 	        }
 
-	    } catch (TaskException e) {
+	    } catch ( IOException e) {
 	        ErrorResponse error = new ErrorResponse("Server Error", 500, e.getMessage());
 	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error);
 	    }
@@ -150,7 +156,7 @@ public class AdminHandler {
 
 	
 	// 4. GET /admin/users/{user_id}
-	public void getUser(HttpServletRequest req, HttpServletResponse res) throws IOException {
+	public void getUser(HttpServletRequest req, HttpServletResponse res) throws  TaskException {
 	    String userIdParam = req.getParameter("user_id");
 
 	    long userId;
@@ -200,7 +206,7 @@ public class AdminHandler {
 	    }
 
 
-	    } catch (TaskException e) {
+	    } catch (IOException e) {
 	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
 	            new ErrorResponse("Server Error", 500, e.getMessage()));
 	    }
@@ -209,7 +215,7 @@ public class AdminHandler {
 
 
 	// 5. PUT /admin/users/update
-	public void updateUser(HttpServletRequest req, HttpServletResponse res) throws IOException {
+	public void updateUser(HttpServletRequest req, HttpServletResponse res) throws TaskException {
 	    RequestJsonConverter jsonConverter = new RequestJsonConverter();
 	    UserDAO userDAO = new UserDAO();
 	    AdminDAO adminDAO = new AdminDAO();
@@ -289,7 +295,7 @@ public class AdminHandler {
 	        res.setContentType("application/json");
 	        res.getWriter().write(response.toString());
 
-	    } catch (TaskException e) {
+	    } catch (IOException e) {
 	        e.printStackTrace();
 	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
 	            new ErrorResponse("TaskException", 500, e.getMessage()));
@@ -300,10 +306,10 @@ public class AdminHandler {
 	
 	
 	// 6. POST /admin/transactions/deposit
-	public void deposit(HttpServletRequest req, HttpServletResponse res) throws IOException {
+	public void deposit(HttpServletRequest req, HttpServletResponse res) throws IOException, TaskException {
 	    RequestJsonConverter jsonConverter = new RequestJsonConverter();
 	    PojoJsonConverter pojoConverter = new PojoJsonConverter();
-	    AdminDAO adminDAO = new AdminDAO();
+	    TransactionDAO transactionDAO = new TransactionDAO();
 
 	    try {
 	        JSONObject json = jsonConverter.convertToJson(req);
@@ -321,8 +327,13 @@ public class AdminHandler {
 	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
 	        long doneBy = sessionData.getUserId();
 
+	        TransactionType transactionType = TransactionType.DEPOSIT;
+	        
+	        TransactionUtil transactionUtil = new TransactionUtil();
+            long transactionId = transactionUtil.generateTransactionId();
+	        
 	        // Perform deposit and return transaction info
-	        Transaction transaction = adminDAO.performDeposit(accountNumber, amount, doneBy);
+	        Transaction transaction = transactionDAO.deposit(accountNumber, amount, doneBy, transactionType, transactionId);
 
 	        JSONObject jsonResp = pojoConverter.pojoToJson(transaction);
 	        jsonResp.put("message", "Deposit successful");
@@ -330,31 +341,93 @@ public class AdminHandler {
 	        res.setContentType("application/json");
 	        res.getWriter().write(jsonResp.toString());
 
-	    } catch (TaskException e) {
+	    } catch (TaskException  e) {
 	        e.printStackTrace();
 	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
 	            new ErrorResponse("TaskException", 500, e.getMessage()));
-	    }
+	       
+	    } catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		     ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+			            new ErrorResponse("TaskException", 500, e.getMessage()));
+		}
 	}
 	
 	
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 
-    //7.  POST /admin/transactions/withdraw
-    public void withdraw(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"AdminHandler.withdraw not implemented\"}");
-    }
+	
+	// 7. POST /admin/transactions/withdraw
+	public void withdraw(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+	    RequestJsonConverter jsonConverter = new RequestJsonConverter();
+	    PojoJsonConverter pojoConverter = new PojoJsonConverter();
+	    TransactionDAO transactionDAO = new TransactionDAO();
 
+	    try {
+	        JSONObject json = jsonConverter.convertToJson(req);
+
+	        Long accountNumber = json.has("account_number") ? json.getLong("account_number") : null;
+	        Double amount = json.has("amount") ? json.getDouble("amount") : null;
+
+	        if (accountNumber == null || amount == null || amount <= 0) {
+	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+	                new ErrorResponse("Bad Request", 400, "account_number and valid amount are required"));
+	            return;
+	        }
+
+	        // Get session data to track who performed the withdrawal
+	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
+	        long doneBy = sessionData.getUserId();
+
+	        TransactionType transactionType = TransactionType.WITHDRAWAL;
+
+	        // Perform withdrawal and return transaction info
+	        TransactionUtil transactionUtil = new TransactionUtil();
+            long transactionId = transactionUtil.generateTransactionId();
+	        Transaction transaction = transactionDAO.withdraw(accountNumber, amount, doneBy, transactionType, transactionId);
+
+	        JSONObject jsonResp = pojoConverter.pojoToJson(transaction);
+	        
+
+	        res.setContentType("application/json");
+	        res.getWriter().write(jsonResp.toString());
+
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+	            new ErrorResponse("TaskException", 500, e.getMessage()));
+	    } catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		     ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+			            new ErrorResponse("TaskException", 500, e.getMessage()));
+		}
+	}
+
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
     //8.  POST /admin/transactions/transfer
     public void transfer(HttpServletRequest req, HttpServletResponse res) throws IOException {
         res.getWriter().write("{\"status\":\"AdminHandler.transfer not implemented\"}");
@@ -389,7 +462,7 @@ public class AdminHandler {
     
     
  // POST /admin/customer/account
-    public void createAccount(HttpServletRequest req, HttpServletResponse res) throws IOException {
+    public void createAccount(HttpServletRequest req, HttpServletResponse res) throws TaskException {
         RequestJsonConverter jsonConverter = new RequestJsonConverter();
         PojoJsonConverter pojoConverter = new PojoJsonConverter();
         AdminDAO adminDAO = new AdminDAO();
@@ -430,7 +503,7 @@ public class AdminHandler {
             res.setContentType("application/json");
             res.getWriter().write(jsonResponse.toString());
 
-        } catch (TaskException e) {
+        } catch (IOException e) {
             ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                 new ErrorResponse("TaskException", 500, e.getMessage()));
         }
@@ -441,7 +514,7 @@ public class AdminHandler {
     
     
     // 10. POST /admin/enew-mployee
-    public void addEmployee(HttpServletRequest req, HttpServletResponse res) throws IOException {
+    public void addEmployee(HttpServletRequest req, HttpServletResponse res) throws TaskException {
         RequestJsonConverter jsonConverter = new RequestJsonConverter();
         PojoJsonConverter pojoConverter = new PojoJsonConverter();
         AdminDAO adminDAO = new AdminDAO();
@@ -490,7 +563,7 @@ public class AdminHandler {
             res.setContentType("application/json");
             res.getWriter().write(responseJson.toString());
 
-        } catch (TaskException e) {
+        } catch (IOException e) {
         	 e.printStackTrace();
             ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     new ErrorResponse("TaskException", 500, e.getMessage()));
@@ -502,7 +575,7 @@ public class AdminHandler {
     
     
  // POST /admin/customer
-    public void addCustomer(HttpServletRequest req, HttpServletResponse res) throws IOException {
+    public void addCustomer(HttpServletRequest req, HttpServletResponse res) throws TaskException {
         RequestJsonConverter jsonConverter = new RequestJsonConverter();
         PojoJsonConverter pojoConverter = new PojoJsonConverter();
         AdminDAO adminDAO = new AdminDAO();
@@ -553,7 +626,7 @@ public class AdminHandler {
             res.setContentType("application/json");
             res.getWriter().write(jsonResponse.toString());
 
-        } catch (TaskException e) {
+        } catch (IOException e) {
         	e.printStackTrace();
             ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                 new ErrorResponse("TaskException", 500, e.getMessage()));
@@ -562,7 +635,7 @@ public class AdminHandler {
 
     
  // 11. PUT /admin/account/status
-    public void updateAccountStatus(HttpServletRequest req, HttpServletResponse res) throws IOException {
+    public void updateAccountStatus(HttpServletRequest req, HttpServletResponse res) throws TaskException {
         RequestJsonConverter jsonConverter = new RequestJsonConverter();
         AdminDAO adminDAO = new AdminDAO();
 
@@ -603,7 +676,7 @@ public class AdminHandler {
             res.setContentType("application/json");
             res.getWriter().write(response.toString());
 
-        } catch (TaskException e) {
+        } catch (IOException e) {
             e.printStackTrace();
             ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     new ErrorResponse("Server Error", 500, e.getMessage()));
