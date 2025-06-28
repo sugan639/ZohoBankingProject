@@ -331,9 +331,11 @@ public class AdminHandler {
 	        
 	        TransactionUtil transactionUtil = new TransactionUtil();
             long transactionId = transactionUtil.generateTransactionId();
+            @SuppressWarnings("null")
+            long fromAccount = (Long) null;
 	        
 	        // Perform deposit and return transaction info
-	        Transaction transaction = transactionDAO.deposit(accountNumber, amount, doneBy, transactionType, transactionId);
+	        Transaction transaction = transactionDAO.deposit(accountNumber, amount, doneBy, transactionType, transactionId, fromAccount, null);
 
 	        JSONObject jsonResp = pojoConverter.pojoToJson(transaction);
 	        jsonResp.put("message", "Deposit successful");
@@ -381,11 +383,14 @@ public class AdminHandler {
 	        long doneBy = sessionData.getUserId();
 
 	        TransactionType transactionType = TransactionType.WITHDRAWAL;
-
+	        
+	        @SuppressWarnings("null")
+			long toAccount = (Long) null;
+	       
 	        // Perform withdrawal and return transaction info
 	        TransactionUtil transactionUtil = new TransactionUtil();
             long transactionId = transactionUtil.generateTransactionId();
-	        Transaction transaction = transactionDAO.withdraw(accountNumber, amount, doneBy, transactionType, transactionId);
+	        Transaction transaction = transactionDAO.withdraw(accountNumber, amount, doneBy, transactionType, transactionId, toAccount, null);
 
 	        JSONObject jsonResp = pojoConverter.pojoToJson(transaction);
 	        
@@ -405,35 +410,65 @@ public class AdminHandler {
 		}
 	}
 
+	
+	
+	// 8. POST /admin/transactions/transfer
+	public void transfer(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+	    RequestJsonConverter jsonConverter = new RequestJsonConverter();
+	    TransactionDAO transactionDAO = new TransactionDAO();
+	    TransactionUtil transactionUtil = new TransactionUtil();
 
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-    //8.  POST /admin/transactions/transfer
-    public void transfer(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"AdminHandler.transfer not implemented\"}");
-    }
+	    try {
+	        JSONObject json = jsonConverter.convertToJson(req);
 
-    
+	        Long fromAccount = json.has("from_account") ? json.getLong("from_account") : null;
+	        Long toAccount = json.has("to_account") ? json.getLong("to_account") : null;
+	        Double amount = json.has("amount") ? json.getDouble("amount") : null;
+	        String transferType = json.optString("type", null);  // Expected: "INTRA_BANK" or "INTER_BANK"
+	        String ifscCode = json.optString("ifsc_code", null);  // optional
+	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
+
+	        if (fromAccount == null || toAccount == null || amount == null || amount <= 0 || transferType == null) {
+	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+	                new ErrorResponse("Bad Request", 400, "Missing or invalid parameters"));
+	            return;
+	        }
+
+	        long doneBy = sessionData.getUserId();
+	        long transactionId = transactionUtil.generateTransactionId(); // shared for both rows if intra-bank
+
+	        if (transferType.equalsIgnoreCase("INTRA_BANK")) {
+	            transactionDAO.withdraw(fromAccount, amount, doneBy, TransactionType.INTRA_BANK_DEBIT, transactionId, toAccount, null);
+	            transactionDAO.deposit(toAccount, amount, doneBy, TransactionType.INTRA_BANK_CREDIT, transactionId, fromAccount, null);
+	        } else if (transferType.equalsIgnoreCase("INTER_BANK")) {
+	            transactionDAO.withdraw(fromAccount, amount, doneBy, TransactionType.INTERBANK_DEBIT, transactionId, toAccount, ifscCode);
+	            // No deposit call for inter-bank – credit is done by external bank
+	        } else {
+	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+	                new ErrorResponse("Bad Request", 400, "Invalid transfer type"));
+	            return;
+	        }
+
+	        // I am the most powerful person onthe entire universe
+	        JSONObject response = new JSONObject();
+	        response.put("message", "Transfer successful");
+	        response.put("transaction_id", transactionId);
+
+	        res.setContentType("application/json");
+	        res.getWriter().write(response.toString());
+
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+	            new ErrorResponse("TaskException", 500, e.getMessage()));
+	    }
+	    catch (SQLException e) {
+	        e.printStackTrace();
+	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+	            new ErrorResponse("TaskException", 500, e.getMessage()));
+	    }
+	}
+
 
     
     

@@ -64,11 +64,11 @@ mysql> CREATE TABLE transactions (
     ->     timestamp BIGINT,
     ->     done_by BIGINT,
     ->     closing_balance DECIMAL(15,2) NOT NULL,
-    ->     beneficiery_id BIGINT,
     ->     user_id BIGINT,
+    -> 	   beneficiery_account_number,
+    ->	   ifsc_code,
     ->     
-    ->     CONSTRAINT fk_transaction_account FOREIGN KEY (account_number) REFERENCES accounts(account_number),
-    ->     CONSTRAINT fk_transaction_beneficiery FOREIGN KEY (beneficiery_id) REFERENCES beneficiery(beneficiery_unique_number)
+    ->     CONSTRAINT fk_transaction_account FOREIGN KEY (account_number) REFERENCES accounts(account_number)
     -> );
 Query OK, 0 rows affected (0.07 sec)
 

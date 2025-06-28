@@ -15,17 +15,40 @@ public class Transaction {
         SUCCESS,
         FAILED
     }
+    private Long transactionReferenceNumber;
+    private Long transactionId;
+    private Long accountNumber;
+    private Double amount;
+    private TransactionType type;
+    private TransactionStatus status;
+    private Long timestamp;
+    private Long doneBy;
+    private Double closingBalance;
+    private Long beneficiaryId;
+    
+    
+    public Long getBeneficiaryId() {
+		return beneficiaryId;
+	}
+	public void setBeneficiaryId(Long beneficiaryId) {
+		this.beneficiaryId = beneficiaryId;
+	}
+	public Long getBeneficiaryAccountNumber() {
+		return beneficiaryAccountNumber;
+	}
+	public void setBeneficiaryAccountNumber(Long beneficiaryAccountNumber) {
+		this.beneficiaryAccountNumber = beneficiaryAccountNumber;
+	}
+	public String getIfscCode() {
+		return ifscCode;
+	}
+	public void setIfscCode(String ifscCode) {
+		this.ifscCode = ifscCode;
+	}
+	private Long userId;
+    private Long beneficiaryAccountNumber;
+    private String ifscCode;
 
-    private long transactionId;
-    private long userId;
-    private long accountNumber;
-    private long transactionReferenceNumber;
-    private double amount;
-    private TransactionType type;      
-    private TransactionStatus status;  
-    private long timestamp;
-    private long doneBy;
-    private double closingBalance;
     
 	public long getTransactionId() {
 		return transactionId;

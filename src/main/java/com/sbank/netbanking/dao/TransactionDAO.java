@@ -15,10 +15,16 @@ import com.sbank.netbanking.model.Transaction.TransactionType;
 
 public class TransactionDAO {
 
-	public Transaction deposit(Long accountNumber, double amount, long doneBy, TransactionType transactionType, long transactionId) throws TaskException {
+	public Transaction deposit(Long toAccountNumber, double amount, long doneBy, 
+			TransactionType transactionType, long transactionId, Long fromAccountNumber, String ifcsCode)
+					throws TaskException {
+		
 	    String getAccountSQL = "SELECT balance, user_id, status FROM accounts WHERE account_number = ?";
 	    String updateAccountSQL = "UPDATE accounts SET balance = ?, modified_at = ?, modified_by = ? WHERE account_number = ?";
-	    String insertTransactionSQL = "INSERT INTO transactions (transaction_id, user_id, account_number, amount, type, status, timestamp, done_by, closing_balance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+	    String insertTransactionSQL = "INSERT INTO transactions (transaction_id, user_id, account_number,"
+	    		+ " amount, type, status, timestamp, done_by, closing_balance,"
+	    		+ " beneficiery_account_number,"
+	    		+ " ifsc_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
 	    long currentTime = System.currentTimeMillis();
 	    String status = TransactionStatus.SUCCESS.name();
@@ -34,7 +40,7 @@ public class TransactionDAO {
 	            PreparedStatement insertTxnStmt = conn.prepareStatement(insertTransactionSQL, Statement.RETURN_GENERATED_KEYS)
 	        ) {
 	            // 1. Fetch account details
-	            getAccStmt.setLong(1, accountNumber);
+	            getAccStmt.setLong(1, toAccountNumber);
 	            ResultSet rs = getAccStmt.executeQuery();
 
 	            if (!rs.next()) {
@@ -54,20 +60,24 @@ public class TransactionDAO {
 	            updateAccStmt.setDouble(1, updatedBalance);
 	            updateAccStmt.setLong(2, currentTime);
 	            updateAccStmt.setLong(3, doneBy);
-	            updateAccStmt.setLong(4, accountNumber);
+	            updateAccStmt.setLong(4, toAccountNumber);
 	            updateAccStmt.executeUpdate();
 
 
 	            // 4. Insert transaction
 	            insertTxnStmt.setLong(1, transactionId);
 	            insertTxnStmt.setLong(2, userId);
-	            insertTxnStmt.setLong(3, accountNumber);
+	            insertTxnStmt.setLong(3, toAccountNumber);
 	            insertTxnStmt.setDouble(4, amount);
 	            insertTxnStmt.setString(5, type);
 	            insertTxnStmt.setString(6, status);
 	            insertTxnStmt.setLong(7, currentTime);
 	            insertTxnStmt.setLong(8, doneBy);
 	            insertTxnStmt.setDouble(9, updatedBalance);
+	            
+	            insertTxnStmt.setLong(10, fromAccountNumber);
+	            insertTxnStmt.setString(11, ifcsCode);
+
 	            insertTxnStmt.executeUpdate();
 
 	            // 5. Get generated reference number
@@ -84,7 +94,7 @@ public class TransactionDAO {
 	            Transaction txn = new Transaction();
 	            txn.setTransactionId(transactionId);
 	            txn.setTransactionReferenceNumber(referenceNumber);
-	            txn.setAccountNumber(accountNumber);
+	            txn.setAccountNumber(toAccountNumber);
 	            txn.setUserId(userId);
 	            txn.setAmount(amount);
 	            txn.setType(TransactionType.valueOf(type));
@@ -92,6 +102,15 @@ public class TransactionDAO {
 	            txn.setTimestamp(currentTime);
 	            txn.setDoneBy(doneBy);
 	            txn.setClosingBalance(updatedBalance);
+
+	            if(fromAccountNumber !=null) {
+	            txn.setBeneficiaryAccountNumber(fromAccountNumber);
+	            }
+	           
+	            if(ifcsCode!=null) {
+		            txn.setIfscCode(ifcsCode);
+		            }
+		            
 	            return txn;
 
 	        }
@@ -106,10 +125,17 @@ public class TransactionDAO {
 	
 	
 	
-	public Transaction withdraw(Long accountNumber, double amount, long doneBy, TransactionType transactionType, long transactionId) throws TaskException {
+	public Transaction withdraw(Long fromAccountNumber, double amount, long doneBy,
+			TransactionType transactionType, long transactionId, long toAccountNumber, String ifcsCode) 
+					throws TaskException {
+		
 	    String getAccountSQL = "SELECT balance, user_id, status FROM accounts WHERE account_number = ?";
-	    String updateAccountSQL = "UPDATE accounts SET balance = ?, modified_at = ?, modified_by = ? WHERE account_number = ?";
-	    String insertTransactionSQL = "INSERT INTO transactions (transaction_id, user_id, account_number, amount, type, status, timestamp, done_by, closing_balance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+	    String updateAccountSQL = "UPDATE accounts SET balance = ?, modified_at = ?, modified_by = ? "
+	    		+ "WHERE account_number = ?";
+	    
+	    String insertTransactionSQL = "INSERT INTO transactions (transaction_id, user_id,"
+	    		+ " account_number, amount, type, status, timestamp, done_by, closing_balance, "
+	    		+ " beneficiery_account_number, ifsc_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
 	    long currentTime = System.currentTimeMillis();
 	    long referenceNumber = currentTime;  // Unique per transaction row
@@ -126,7 +152,7 @@ public class TransactionDAO {
 	            PreparedStatement insertTxnStmt = conn.prepareStatement(insertTransactionSQL)
 	        ) {
 	            // 1. Fetch account
-	            getAccStmt.setLong(1, accountNumber);
+	            getAccStmt.setLong(1, fromAccountNumber);
 	            ResultSet rs = getAccStmt.executeQuery();
 
 	            if (!rs.next()) {
@@ -153,7 +179,7 @@ public class TransactionDAO {
 	                updateAccStmt.setDouble(1, updatedBalance);
 	                updateAccStmt.setLong(2, currentTime);
 	                updateAccStmt.setLong(3, doneBy);
-	                updateAccStmt.setLong(4, accountNumber);
+	                updateAccStmt.setLong(4, fromAccountNumber);
 	                updateAccStmt.executeUpdate();
 	            }
 	            
@@ -164,18 +190,20 @@ public class TransactionDAO {
 
 	            insertTxnStmt.setLong(1, transactionId); // transaction_id placeholder
 	            insertTxnStmt.setLong(2, userId);
-	            insertTxnStmt.setLong(3, accountNumber);
+	            insertTxnStmt.setLong(3, fromAccountNumber);
 	            insertTxnStmt.setDouble(4, amount);
 	            insertTxnStmt.setString(5, transactionType.name());
 	            insertTxnStmt.setString(6, status);
 	            insertTxnStmt.setLong(7, currentTime);
 	            insertTxnStmt.setLong(8, doneBy);
 	            insertTxnStmt.setDouble(9, updatedBalance);
+	            insertTxnStmt.setLong(10, fromAccountNumber);
+	            insertTxnStmt.setString(11, ifcsCode);
 	            insertTxnStmt.executeUpdate();
 
 	            // 5. Return response POJO
 	            Transaction txn = new Transaction();
-	            txn.setAccountNumber(accountNumber);
+	            txn.setAccountNumber(fromAccountNumber);
 	            txn.setUserId(userId);
 	            txn.setTransactionReferenceNumber(referenceNumber);
 	            txn.setAmount(amount);
@@ -184,6 +212,15 @@ public class TransactionDAO {
 	            txn.setTimestamp(currentTime);
 	            txn.setDoneBy(doneBy);
 	            txn.setClosingBalance(updatedBalance);
+	            
+	            if(fromAccountNumber!=null) {
+	            txn.setBeneficiaryAccountNumber(fromAccountNumber);
+	            }
+	           
+	            if(ifcsCode!=null) {
+		            txn.setIfscCode(ifcsCode);
+		            }
+		            
 	            return txn;
 
 	        }
