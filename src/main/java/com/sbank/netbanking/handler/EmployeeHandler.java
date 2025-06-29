@@ -1,63 +1,548 @@
 package com.sbank.netbanking.handler;
 
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.List;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import com.sbank.netbanking.dao.AdminDAO;
+import com.sbank.netbanking.dao.CustomerDAO;
+import com.sbank.netbanking.dao.TransactionDAO;
+import com.sbank.netbanking.dao.TransactionUtil;
+import com.sbank.netbanking.dao.UserDAO;
+import com.sbank.netbanking.dto.ErrorResponse;
+import com.sbank.netbanking.dto.UserDTO;
+import com.sbank.netbanking.exceptions.TaskException;
+import com.sbank.netbanking.model.Account;
+import com.sbank.netbanking.model.Customer;
+import com.sbank.netbanking.model.Employee;
+import com.sbank.netbanking.model.NewCustomer;
+import com.sbank.netbanking.model.SessionData;
+import com.sbank.netbanking.model.Transaction;
+import com.sbank.netbanking.model.User;
+import com.sbank.netbanking.model.Transaction.TransactionType;
+import com.sbank.netbanking.service.BcryptService;
+import com.sbank.netbanking.util.DateUtil;
+import com.sbank.netbanking.util.ErrorResponseUtil;
+import com.sbank.netbanking.util.PojoJsonConverter;
+import com.sbank.netbanking.util.RandomPasswordGenerator;
+import com.sbank.netbanking.util.RequestJsonConverter;
+import com.sbank.netbanking.util.UserMapper;
 
 public class EmployeeHandler {
 
-    // GET /employee/profile/{user_id}
-    public void getProfile(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"EmployeeHandler.getProfile not implemented\"}");
-    }
+	// GET /employee/profile/{user_id}
+	public void getProfile(HttpServletRequest req, HttpServletResponse res) throws TaskException{
 
-    // POST /employee/customers
-    public void addCustomer(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"EmployeeHandler.addCustomer not implemented\"}");
-    }
+		
+	    SessionData sessionData =  new SessionData();
+	    sessionData = (SessionData) req.getAttribute("sessionData");
+        long adminId = sessionData.getUserId();
+      
+        System.out.println("User ID from the session data get profile method: "+adminId);
+        AdminDAO adminDAO = new AdminDAO();
+        PojoJsonConverter converter = new PojoJsonConverter();
 
-    // GET /employee/branches/requests
-    public void getBranchRequests(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"EmployeeHandler.getBranchRequests not implemented\"}");
-    }
-
-    // GET /employee/accounts
-    public void getBranchAccounts(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"EmployeeHandler.getBranchAccounts not implemented\"}");
-    }
-
-    // GET /employee/transactions
-    public void findTransactions(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"EmployeeHandler.findTransactions not implemented\"}");
-    }
+        try {
+        	Employee admin = adminDAO.getEmployeeById(adminId);
+            if (admin != null) {
+                JSONObject jsonAdmin = converter.pojoToJson(admin);
+                res.setContentType("application/json");
+                res.getWriter().write(jsonAdmin.toString());
+            } else {
+                res.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                res.getWriter().write("{\"error\":\"Admin not found\", \"code\":404}");
+            }
+        } catch (IOException e) {
+        	  ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+      	            new ErrorResponse("TaskException", 500, e.getMessage()));
+        }
+        
+	}
+	
 
     // GET /employee/users/{user_id}
-    public void getUser(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"EmployeeHandler.getUser not implemented\"}");
+    public void getUser(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    	 String userIdParam = req.getParameter("user_id");
+
+ 	    long userId;
+
+ 	    try {
+ 	        userId = Long.parseLong(userIdParam);
+ 	    } catch (NumberFormatException e) {
+ 	        ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+ 	            new ErrorResponse("Bad Request", 400, "Invalid user_id format"));
+ 	        return;
+ 	    }
+
+ 	    UserDAO userDAO = new UserDAO(); // Assumed
+ 	    PojoJsonConverter converter = new PojoJsonConverter();
+
+ 	    try {
+ 	        User user = userDAO.getUserById(userId);		// User object to get the role
+             UserMapper userMapper = new UserMapper();
+             UserDTO userDataDto = userMapper.toUserDTO(user);	// DTO to remove the password field
+             
+ 	        if (userDataDto == null) {
+ 	            ErrorResponseUtil.send(res, HttpServletResponse.SC_NOT_FOUND,
+ 	                new ErrorResponse("Not Found", 404, "User not found"));
+ 	            return;
+ 	        }
+
+ 	        switch (userDataDto.getRole()) {
+ 	        case CUSTOMER:
+ 	            CustomerDAO customerDAO = new CustomerDAO();
+ 	            Customer customer = customerDAO.getCustomerById(userId);
+ 	            if (customer != null) {
+ 	                JSONObject custJson = converter.pojoToJson(customer);
+ 	                res.setContentType("application/json");
+ 	    	        res.getWriter().write(custJson.toString());	            }
+ 	            break;
+
+ 	        case EMPLOYEE:
+ 	        case ADMIN:
+ 	            AdminDAO adminDAO = new AdminDAO();
+ 	            Employee employee = adminDAO.getEmployeeById(userId);
+ 	            if (employee != null) {
+ 	                JSONObject empJson = converter.pojoToJson(employee);
+ 	                res.setContentType("application/json");
+ 	    	        res.getWriter().write(empJson.toString());
+ 	    	        }
+ 	            break;
+ 	    }
+
+
+ 	    } catch (IOException e) {
+ 	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+ 	            new ErrorResponse("Server Error", 500, e.getMessage()));
+ 	    }
     }
 
+
+    // POST /employee/customers
+    public void addCustomer(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+        
+    	RequestJsonConverter jsonConverter = new RequestJsonConverter();
+        PojoJsonConverter pojoConverter = new PojoJsonConverter();
+        AdminDAO adminDAO = new AdminDAO();
+        RandomPasswordGenerator passwordGenerator = new RandomPasswordGenerator();
+
+        try {
+            // Extract JSON from request
+            JSONObject json = jsonConverter.convertToJson(req);
+
+            // Get session data (to know who created the customer)
+            SessionData sessionData = (SessionData) req.getAttribute("sessionData");
+            long createdBy = sessionData.getUserId();
+
+            // Required fields from request
+            String name = json.optString("name", null);
+            String email = json.optString("email", null);
+            String dobString = json.optString("dob", null); // format: yyyy-MM-dd
+            String address = json.optString("address", null);
+            Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
+            Long aadharNumber = json.has("aadhar_number") ? json.getLong("aadhar_number") : null;
+            String panNumber = json.optString("pan_number", null);
+            String role = "CUSTOMER";
+
+            // Generate random password
+            String password = passwordGenerator.generateRandomPassword(8);
+
+            String hashedPassword = BcryptService.hashPassword(password);
+            
+            if (name == null || email == null || dobString == null || address == null || 
+                mobileNumber == null || aadharNumber == null || panNumber == null) {
+                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+                    new ErrorResponse("Bad Request", 400, "All fields are required"));
+                return;
+            }
+
+            // Convert DOB to epoch millis
+            long dobMillis = DateUtil.convertDateToEpoch(dobString);
+
+            // Save to DB
+            NewCustomer customer = adminDAO.addNewCustomer(name, hashedPassword, email, mobileNumber, dobMillis,
+                                                        address, aadharNumber, panNumber, createdBy, role);
+
+            // Convert response
+            customer.setPassword(password);  // setting plain new password for new customer
+            JSONObject jsonResponse = pojoConverter.pojoToJson(customer);
+            jsonResponse.put("message", "Customer and user added successfully");
+
+            res.setContentType("application/json");
+            res.getWriter().write(jsonResponse.toString());
+
+        } catch (IOException e) {
+        	e.printStackTrace();
+            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                new ErrorResponse("TaskException", 500, e.getMessage()));
+        }
+    }
+
+
+    // GET /employee/transactions
+    public void findTransactions(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    	 RequestJsonConverter converter = new RequestJsonConverter();
+ 	    PojoJsonConverter pojoConverter = new PojoJsonConverter();
+ 	    TransactionDAO transactionDAO = new TransactionDAO();
+
+ 	    try {
+ 	        JSONObject json = converter.convertToJson(req);
+
+ 	        Long txnId = json.has("transaction_id") ? json.getLong("transaction_id") : null;
+ 	        Long refNum = json.has("transaction_reference_number") ? json.getLong("transaction_reference_number") : null;
+ 	        Long accNum = json.has("account_number") ? json.getLong("account_number") : null;
+ 	        Long from = json.has("from_date") ? json.getLong("from_date") : null;
+ 	        Long to = json.has("to_date") ? json.getLong("to_date") : null;
+ 	        String type = json.optString("type", null);
+ 	        String status = json.optString("status", null);
+ 	        int limit = json.has("limit") ? json.getInt("limit") : 100;
+ 	        int offset = json.has("offset") ? json.getInt("offset") : 0;
+
+ 	        // Validation
+ 	        if ((txnId == null && refNum == null) && (accNum == null || from == null || to == null)) {
+ 	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+ 	                new ErrorResponse("Bad Request", 400, "Provide transaction_id OR reference_number OR (account_number, from_date, to_date)"));
+ 	            return;
+ 	        }
+
+ 	        List<Transaction> txns = transactionDAO.getFilteredTransactions(
+ 	            txnId, refNum, accNum, from, to, type, status, limit, offset
+ 	        );
+
+ 	        JSONArray jsonArr = pojoConverter.pojoListToJsonArray(txns);
+ 	        JSONObject result = new JSONObject();
+ 	        result.put("transactions", jsonArr);
+
+ 	        res.setContentType("application/json");
+ 	        res.getWriter().write(result.toString());
+
+ 	    } catch (IOException e) {
+ 	        e.printStackTrace();
+ 	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+ 	            new ErrorResponse("Server Error", 500, "Could not fetch transactions"));
+ 	    }
+    }
+
+
     // PUT /employee/users/{user_id}
-    public void updateUser(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"EmployeeHandler.updateUser not implemented\"}");
+    public void updateUser(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    	RequestJsonConverter jsonConverter = new RequestJsonConverter();
+	    UserDAO userDAO = new UserDAO();
+	    AdminDAO adminDAO = new AdminDAO();
+	    CustomerDAO customerDAO = new CustomerDAO();
+
+	    try {
+	        JSONObject json = jsonConverter.convertToJson(req);
+
+	        if (json == null || json.isEmpty()) {
+	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+	                new ErrorResponse("Bad Request", 400, "Request body is empty"));
+	            return;
+	        }
+
+	     
+
+	        Long userId = json.has("user_id") ? json.getLong("user_id") : null;
+	        if (userId == null) {
+	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+	                new ErrorResponse("Bad Request", 400, "user_id is required"));
+	            return;
+	        }
+
+	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
+	        long modifiedBy = sessionData.getUserId();
+
+	        // Fetch role
+	        User user = userDAO.getUserById(userId);
+	        if (user == null) {
+	            ErrorResponseUtil.send(res, HttpServletResponse.SC_NOT_FOUND,
+	                new ErrorResponse("Not Found", 404, "User not found"));
+	            return;
+	        }
+
+	        String role = user.getRole().name();
+
+	        // Common fields
+	        String name = json.optString("name", null);
+	        String email = json.optString("email", null);
+	        Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
+
+	        // Update users table
+	        userDAO.updateUserFields(userId, name, email, mobileNumber, modifiedBy);
+
+	        // Role-based updates
+	        if (role.equals("CUSTOMER")) {
+	            // Validate that no employee-specific fields are present
+	            if (json.has("branch_id")) {
+	                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+	                    new ErrorResponse("Bad Request", 400, "Customers should not have branch_id"));
+	                return;
+	            }
+
+	            // Customer-specific fields
+	            String dobStr = json.optString("dob", null);
+	            Long dob = dobStr != null ? DateUtil.convertDateToEpoch(dobStr) : null;
+	            String address = json.optString("address", null);
+	            Long aadhar = json.has("aadhar_number") ? json.getLong("aadhar_number") : null;
+	            String pan = json.optString("pan_number", null);
+
+	            customerDAO.updateCustomerFields(userId, dob, address, aadhar, pan);
+
+	        } else if (role.equals("EMPLOYEE") ) {
+	            // Validate that no customer-specific fields are present
+	            if (json.has("dob") || json.has("address") || json.has("aadhar_number") || json.has("pan_number")) {
+	                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+	                    new ErrorResponse("Bad Request", 400, "Employees/Admins should not have customer-specific fields like dob, address, etc."));
+	                return;
+	            }
+
+	            Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
+	            adminDAO.updateEmployeeFields(userId, branchId);
+	        }
+	        
+	        else if(role.equals("ADMIN")) {
+	        	ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+	                    new ErrorResponse("Unauthorized", 401, "Employees should not update admin data!"));
+	                return;
+	        }
+	        
+	        
+
+	        JSONObject response = new JSONObject();
+	        response.put("message", "User updated successfully");
+	        res.setContentType("application/json");
+	        res.getWriter().write(response.toString());
+
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+	            new ErrorResponse("TaskException", 500, e.getMessage()));
+	    }
     }
 
     // POST /employee/transactions/deposit
-    public void deposit(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"EmployeeHandler.deposit not implemented\"}");
+    public void deposit(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    	RequestJsonConverter jsonConverter = new RequestJsonConverter();
+	    PojoJsonConverter pojoConverter = new PojoJsonConverter();
+	    TransactionDAO transactionDAO = new TransactionDAO();
+
+	    try {
+	        JSONObject json = jsonConverter.convertToJson(req);
+
+	        Long accountNumber = json.has("account_number") ? json.getLong("account_number") : null;
+	        Double amount = json.has("amount") ? json.getDouble("amount") : null;
+
+	        if (accountNumber == null || amount == null || amount <= 0) {
+	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+	                new ErrorResponse("Bad Request", 400, "account_number and valid amount are required"));
+	            return;
+	        }
+
+	        // Get session data to track who performed the deposit
+	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
+	        long doneBy = sessionData.getUserId();
+
+	        TransactionType transactionType = TransactionType.DEPOSIT;
+	        
+	        TransactionUtil transactionUtil = new TransactionUtil();
+            long transactionId = transactionUtil.generateTransactionId();
+            @SuppressWarnings("null")
+            long fromAccount = (Long) null;
+	        
+	        // Perform deposit and return transaction info
+	        Transaction transaction = transactionDAO.deposit(accountNumber, amount, doneBy, transactionType, transactionId, fromAccount, null);
+
+	        JSONObject jsonResp = pojoConverter.pojoToJson(transaction);
+	        jsonResp.put("message", "Deposit successful");
+
+	        res.setContentType("application/json");
+	        res.getWriter().write(jsonResp.toString());
+
+	    } catch (IOException  e) {
+	        e.printStackTrace();
+	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+	            new ErrorResponse("TaskException", 500, e.getMessage()));
+	       
+	    } catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		     ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+			            new ErrorResponse("TaskException", 500, e.getMessage()));
+		}
     }
 
     // POST /employee/transactions/withdraw
-    public void withdraw(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"EmployeeHandler.withdraw not implemented\"}");
+    public void withdraw(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    	 RequestJsonConverter jsonConverter = new RequestJsonConverter();
+ 	    PojoJsonConverter pojoConverter = new PojoJsonConverter();
+ 	    TransactionDAO transactionDAO = new TransactionDAO();
+
+ 	    try {
+ 	        JSONObject json = jsonConverter.convertToJson(req);
+
+ 	        Long accountNumber = json.has("account_number") ? json.getLong("account_number") : null;
+ 	        Double amount = json.has("amount") ? json.getDouble("amount") : null;
+
+ 	        if (accountNumber == null || amount == null || amount <= 0) {
+ 	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+ 	                new ErrorResponse("Bad Request", 400, "account_number and valid amount are required"));
+ 	            return;
+ 	        }
+
+ 	        // Get session data to track who performed the withdrawal
+ 	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
+ 	        long doneBy = sessionData.getUserId();
+
+ 	        TransactionType transactionType = TransactionType.WITHDRAWAL;
+ 	        
+ 	        @SuppressWarnings("null")
+ 			long toAccount = (Long) null;
+ 	       
+ 	        // Perform withdrawal and return transaction info
+ 	        TransactionUtil transactionUtil = new TransactionUtil();
+             long transactionId = transactionUtil.generateTransactionId();
+ 	        Transaction transaction = transactionDAO.withdraw(accountNumber, amount, doneBy, transactionType, transactionId, toAccount, null);
+
+ 	        JSONObject jsonResp = pojoConverter.pojoToJson(transaction);
+ 	        
+
+ 	        res.setContentType("application/json");
+ 	        res.getWriter().write(jsonResp.toString());
+
+ 	    } catch (IOException e) {
+ 	        e.printStackTrace();
+ 	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+ 	            new ErrorResponse("TaskException", 500, e.getMessage()));
+ 	    } catch (SQLException e) {
+ 			// TODO Auto-generated catch block
+ 			e.printStackTrace();
+ 		     ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+ 			            new ErrorResponse("TaskException", 500, e.getMessage()));
+ 		}
     }
 
     // POST /employee/transactions/transfer
-    public void transfer(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"EmployeeHandler.transfer not implemented\"}");
+    public void transfer(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    	 RequestJsonConverter jsonConverter = new RequestJsonConverter();
+ 	    TransactionDAO transactionDAO = new TransactionDAO();
+ 	    TransactionUtil transactionUtil = new TransactionUtil();
+
+ 	    try {
+ 	        JSONObject json = jsonConverter.convertToJson(req);
+
+ 	        Long fromAccount = json.has("from_account") ? json.getLong("from_account") : null;
+ 	        Long toAccount = json.has("to_account") ? json.getLong("to_account") : null;
+ 	        Double amount = json.has("amount") ? json.getDouble("amount") : null;
+ 	        String transferType = json.optString("type", null);  // Expected: "INTRA_BANK" or "INTER_BANK"
+ 	        String ifscCode = json.optString("ifsc_code", null);  // optional
+ 	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
+
+ 	        if (fromAccount == null || toAccount == null || amount == null || amount <= 0 || transferType == null) {
+ 	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+ 	                new ErrorResponse("Bad Request", 400, "Missing or invalid parameters"));
+ 	            return;
+ 	        }
+
+ 	        long doneBy = sessionData.getUserId();
+ 	        long transactionId = transactionUtil.generateTransactionId(); // shared for both rows if intra-bank
+
+ 	        if (transferType.equalsIgnoreCase("INTRA_BANK")) {
+ 	            transactionDAO.withdraw(fromAccount, amount, doneBy, TransactionType.INTRA_BANK_DEBIT, transactionId, toAccount, null);
+ 	            transactionDAO.deposit(toAccount, amount, doneBy, TransactionType.INTRA_BANK_CREDIT, transactionId, fromAccount, null);
+ 	        } else if (transferType.equalsIgnoreCase("INTER_BANK")) {
+ 	            transactionDAO.withdraw(fromAccount, amount, doneBy, TransactionType.INTERBANK_DEBIT, transactionId, toAccount, ifscCode);
+ 	            // No deposit call for inter-bank – credit is done by external bank
+ 	        } else {
+ 	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+ 	                new ErrorResponse("Bad Request", 400, "Invalid transfer type"));
+ 	            return;
+ 	        }
+
+ 	        // I am the most powerful person onthe entire universe
+ 	        JSONObject response = new JSONObject();
+ 	        response.put("message", "Transfer successful");
+ 	        response.put("transaction_id", transactionId);
+
+ 	        res.setContentType("application/json");
+ 	        res.getWriter().write(response.toString());
+
+ 	    } catch (IOException e) {
+ 	        e.printStackTrace();
+ 	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+ 	            new ErrorResponse("TaskException", 500, e.getMessage()));
+ 	    }
+ 	    catch (SQLException e) {
+ 	        e.printStackTrace();
+ 	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+ 	            new ErrorResponse("TaskException", 500, e.getMessage()));
+ 	    }
     }
 
     // POST /employee/account
-    public void createAccount(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        res.getWriter().write("{\"status\":\"EmployeeHandler.createAccount not implemented\"}");
+    public void createAccount(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    	RequestJsonConverter jsonConverter = new RequestJsonConverter();
+        PojoJsonConverter pojoConverter = new PojoJsonConverter();
+        AdminDAO adminDAO = new AdminDAO();
+        UserDAO userDAO = new UserDAO();
+
+        try {
+            JSONObject json = jsonConverter.convertToJson(req);
+
+            Long userId = json.has("user_id") ? json.getLong("user_id") : null;
+            Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
+            Double initialBalance = json.has("balance") ? json.getDouble("balance") : 0.0;
+
+            if (userId == null || branchId == null) {
+                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+                    new ErrorResponse("Bad Request", 400, "user_id and branch_id are required"));
+                return;
+            }
+
+            // Validate user is a customer
+            User user = userDAO.getUserById(userId);
+            if (user == null || !user.getRole().name().equals("CUSTOMER")) {
+                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+                    new ErrorResponse("Bad Request", 400, "Account can only be created for customers"));
+                return;
+            }
+
+            // Get admin ID from session (created_by, modified_by)
+            SessionData sessionData = (SessionData) req.getAttribute("sessionData");
+            long createdBy = sessionData.getUserId();
+
+            // Create the account
+            Account account = adminDAO.createCustomerAccount(userId, branchId, initialBalance, createdBy);
+
+            // Return created account
+            JSONObject jsonResponse = pojoConverter.pojoToJson(account);
+            jsonResponse.put("message", "Account created successfully");
+
+            res.setContentType("application/json");
+            res.getWriter().write(jsonResponse.toString());
+
+        } catch (IOException e) {
+            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                new ErrorResponse("TaskException", 500, e.getMessage()));
+        }
     }
+    
+//  // GET /employee/branches/requests
+//  public void getBranchRequests(HttpServletRequest req, HttpServletResponse res) throws IOException {
+//      res.getWriter().write("{\"status\":\"EmployeeHandler.getBranchRequests not implemented\"}");
+//  }
+
+  // GET /employee/accounts
+  public void getBranchAccounts(HttpServletRequest req, HttpServletResponse res) throws IOException {
+      res.getWriter().write("{\"status\":\"EmployeeHandler.getBranchAccounts not implemented\"}");
+  }
+
+  
+  
+  
 }

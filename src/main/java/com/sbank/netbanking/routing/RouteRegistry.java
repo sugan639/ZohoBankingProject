@@ -28,14 +28,15 @@ public class RouteRegistry {
         routes.add(new Route("GET", "/customer/profile", customerHandler::getProfile));
         routes.add(new Route("PUT", "/customer/profile", customerHandler::updateProfile));
         routes.add(new Route("GET", "/customer/accounts", customerHandler::getAccounts));
-        routes.add(new Route("GET", "/customer/transactions", customerHandler::getTransaction));
+        routes.add(new Route("POST", "/customer/transactions", customerHandler::getTransaction));
         routes.add(new Route("POST", "/customer/transfer", customerHandler::transferMoney));
-        routes.add(new Route("POST", "/customer/beneficiaries", customerHandler::addBeneficiary));
+        routes.add(new Route("POST", "/customer/beneficiaries/add", customerHandler::addBeneficiary));
+        routes.add(new Route("GET", "/customer/beneficiaries/get", customerHandler::getBeneficiary));
 
         // Employee
         routes.add(new Route("GET", "/employee/profile", employeeHandler::getProfile));
         routes.add(new Route("POST", "/employee/customers", employeeHandler::addCustomer));
-        routes.add(new Route("GET", "/employee/branches/requests", employeeHandler::getBranchRequests));
+  //      routes.add(new Route("GET", "/employee/branches/requests", employeeHandler::getBranchRequests));
         routes.add(new Route("GET", "/employee/accounts", employeeHandler::getBranchAccounts));
         routes.add(new Route("GET", "/employee/transactions", employeeHandler::findTransactions));
         routes.add(new Route("GET", "/employee/users", employeeHandler::getUser));
@@ -60,7 +61,9 @@ public class RouteRegistry {
         routes.add(new Route("POST", "/admin/new-employee", adminHandler::addEmployee));
         routes.add(new Route("POST", "/admin/new-customer", adminHandler::addCustomer));
 
-        
+        // Transactions
+        routes.add(new Route("POST", "/admin/transactions/query", adminHandler::queryTransactions));
+
     }
     
     

@@ -2,10 +2,12 @@ package com.sbank.netbanking.handler;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import com.sbank.netbanking.dao.AdminDAO;
@@ -478,7 +480,50 @@ public class AdminHandler {
     
     
     
-    
+	// POST /admin/transactions/query
+	public void queryTransactions(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+	    RequestJsonConverter converter = new RequestJsonConverter();
+	    PojoJsonConverter pojoConverter = new PojoJsonConverter();
+	    TransactionDAO transactionDAO = new TransactionDAO();
+
+	    try {
+	        JSONObject json = converter.convertToJson(req);
+
+	        Long txnId = json.has("transaction_id") ? json.getLong("transaction_id") : null;
+	        Long refNum = json.has("transaction_reference_number") ? json.getLong("transaction_reference_number") : null;
+	        Long accNum = json.has("account_number") ? json.getLong("account_number") : null;
+	        Long from = json.has("from_date") ? json.getLong("from_date") : null;
+	        Long to = json.has("to_date") ? json.getLong("to_date") : null;
+	        String type = json.optString("type", null);
+	        String status = json.optString("status", null);
+	        int limit = json.has("limit") ? json.getInt("limit") : 100;
+	        int offset = json.has("offset") ? json.getInt("offset") : 0;
+
+	        // Validation
+	        if ((txnId == null && refNum == null) && (accNum == null || from == null || to == null)) {
+	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+	                new ErrorResponse("Bad Request", 400, "Provide transaction_id OR reference_number OR (account_number, from_date, to_date)"));
+	            return;
+	        }
+
+	        List<Transaction> txns = transactionDAO.getFilteredTransactions(
+	            txnId, refNum, accNum, from, to, type, status, limit, offset
+	        );
+
+	        JSONArray jsonArr = pojoConverter.pojoListToJsonArray(txns);
+	        JSONObject result = new JSONObject();
+	        result.put("transactions", jsonArr);
+
+	        res.setContentType("application/json");
+	        res.getWriter().write(result.toString());
+
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+	            new ErrorResponse("Server Error", 500, "Could not fetch transactions"));
+	    }
+	}
+
     
     
     

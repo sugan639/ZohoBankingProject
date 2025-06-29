@@ -1,8 +1,10 @@
 package com.sbank.netbanking.util;
 
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.logging.Logger;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import com.sbank.netbanking.exceptions.ExceptionMessages;
@@ -50,6 +52,21 @@ public class PojoJsonConverter {
         }
 
         return json;
+    }
+    
+    
+
+    public JSONArray pojoListToJsonArray(List<?> pojoList) throws TaskException {
+        JSONArray jsonArray = new JSONArray();
+        try {
+            for (Object pojo : pojoList) {
+                JSONObject json = new JSONObject(pojo); // Assumes all POJOs follow proper JavaBean convention
+                jsonArray.put(json);
+            }
+        } catch (Exception e) {
+            throw new TaskException(ExceptionMessages.POJO_TO_JSON_CONVERSION_FAILED, e);
+        }
+        return jsonArray;
     }
 }
 

@@ -4,8 +4,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.sbank.netbanking.dbconfig.ConnectionManager;
+import com.sbank.netbanking.exceptions.ExceptionMessages;
 import com.sbank.netbanking.exceptions.TaskException;
 import com.sbank.netbanking.model.Account;
 import com.sbank.netbanking.model.Account.AccountStatus;
@@ -64,4 +67,42 @@ public class AccountDAO {
             throw new TaskException("Database connection error", e);
         }
     }
+    
+
+    public List<Account> getAccountsByUserId(long userId) throws TaskException {
+        String sql = "SELECT * FROM accounts WHERE user_id = ?";
+        List<Account> accountList = new ArrayList<>();
+
+        try (ConnectionManager connectionManager = new ConnectionManager()) {
+            connectionManager.initConnection();
+            Connection conn = connectionManager.getConnection();
+
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setLong(1, userId);
+                ResultSet rs = stmt.executeQuery();
+
+                while (rs.next()) {
+                    Account acc = new Account();
+                    acc.setAccountNumber(rs.getLong("account_number"));
+                    acc.setUserId(rs.getLong("user_id"));
+                    acc.setBalance(rs.getDouble("balance"));
+                    acc.setBranchId(rs.getLong("branch_id"));
+                    acc.setStatus(AccountStatus.valueOf(rs.getString("status")));
+                    acc.setCreatedAt(rs.getLong("created_at"));
+                    acc.setModifiedAt(rs.getLong("modified_at"));
+                    acc.setModifiedBy(rs.getLong("modified_by"));
+                    accountList.add(acc);
+                }
+            }
+        } catch (SQLException e) {
+            throw new TaskException("Failed to fetch accounts", e);
+        } catch (Exception e) {
+            throw new TaskException(ExceptionMessages.DATABASE_CONNECTION_FAILED, e);
+        }
+
+        return accountList;
+    }
+
+
+
 }

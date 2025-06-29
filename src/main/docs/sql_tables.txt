@@ -73,18 +73,17 @@ mysql> CREATE TABLE transactions (
 Query OK, 0 rows affected (0.07 sec)
 
 
-mysql> CREATE TABLE beneficiery (
-    ->   beneficiery_unique_number BIGINT PRIMARY KEY,
-    ->   customer_id BIGINT,
-    ->   beneficiery_account_number BIGINT,
-    ->   beneficiery_name VARCHAR(100),
-    ->   beneficiery_ifsc_code VARCHAR(11),
-    ->   created_at BIGINT,
-    ->   modified_at BIGINT,
-    ->   modified_by BIGINT,
-    ->   CONSTRAINT fk_beneficiery_customer FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
-    -> );
-Query OK, 0 rows affected (0.04 sec)
+CREATE TABLE beneficiery (
+    beneficiery_unique_number BIGINT PRIMARY KEY AUTO_INCREMENT,
+    customer_id BIGINT,
+    beneficiery_account_number BIGINT,
+    beneficiery_name VARCHAR(100),
+    beneficiery_ifsc_code VARCHAR(11),
+    created_at BIGINT,
+    modified_at BIGINT,
+    modified_by BIGINT,
+    CONSTRAINT fk_beneficiery_customer FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+) AUTO_INCREMENT = 700000000001;
 
 mysql> CREATE TABLE branches (
     ->   branch_id BIGINT PRIMARY KEY,

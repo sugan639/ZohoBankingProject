@@ -5,6 +5,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.sbank.netbanking.dbconfig.ConnectionManager;
 import com.sbank.netbanking.exceptions.ExceptionMessages;
@@ -230,6 +232,87 @@ public class TransactionDAO {
 	        throw new TaskException(ExceptionMessages.WRONG_ACTION, e);
 	    }
 	}
+	
+	
+	public List<Transaction> getFilteredTransactions(
+	        Long txnId, Long refNum, Long accNum, Long from, Long to,
+	        String type, String status, int limit, int offset) throws TaskException {
+
+	    List<Transaction> result = new ArrayList<>();
+	    StringBuilder sql = new StringBuilder("SELECT * FROM transactions WHERE 1=1 ");
+	    List<Object> params = new ArrayList<>();
+
+	    if (txnId != null) {
+	        sql.append("AND transaction_id = ? ");
+	        params.add(txnId);
+	    } else if (refNum != null) {
+	        sql.append("AND transaction_reference_number = ? ");
+	        params.add(refNum);
+	    } else {
+	        sql.append("AND account_number = ? AND timestamp BETWEEN ? AND ? ");
+	        params.add(accNum);
+	        params.add(from);
+	        params.add(to);
+	        if (type != null) {
+	            sql.append("AND type = ? ");
+	            params.add(type);
+	        }
+	        if (status != null) {
+	            sql.append("AND status = ? ");
+	            params.add(status);
+	        }
+	    }
+
+	    sql.append("ORDER BY timestamp DESC LIMIT ? OFFSET ?");
+	    params.add(limit);
+	    params.add(offset);
+
+	    try (ConnectionManager cm = new ConnectionManager()) {
+	        cm.initConnection();
+	        Connection conn = cm.getConnection();
+	        try (PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+	            for (int i = 0; i < params.size(); i++) {
+	                stmt.setObject(i + 1, params.get(i));
+	            }
+
+	            ResultSet rs = stmt.executeQuery();
+	            while (rs.next()) {
+	                Transaction t = new Transaction();
+	                t.setTransactionReferenceNumber(rs.getLong("transaction_reference_number"));
+	                t.setTransactionId(rs.getLong("transaction_id"));
+	                t.setAccountNumber(rs.getLong("account_number"));
+	                t.setAmount(rs.getDouble("amount"));
+	                t.setType(Transaction.TransactionType.valueOf(rs.getString("type")));
+	                t.setStatus(Transaction.TransactionStatus.valueOf(rs.getString("status")));
+	                t.setTimestamp(rs.getLong("timestamp"));
+	                t.setDoneBy(rs.getLong("done_by"));
+	                t.setClosingBalance(rs.getDouble("closing_balance"));
+	                t.setUserId(rs.getLong("user_id"));
+
+	                try {
+	                    t.setBeneficiaryAccountNumber(rs.getLong("beneficiery_account_number"));
+	                } catch (Exception ignore) {
+	                	
+	                }
+
+	                try {
+	                    t.setIfscCode(rs.getString("ifsc_code"));
+	                } catch (Exception ignore) {
+	                	
+	                }
+
+	                result.add(t);
+	            }
+	        }
+	    } catch (SQLException e) {
+	        throw new TaskException("Failed to fetch filtered transactions", e);
+	    } catch (Exception e) {
+	        throw new TaskException(ExceptionMessages.DATABASE_CONNECTION_FAILED, e);
+	    }
+
+	    return result;
+	}
+
 
 
 }
