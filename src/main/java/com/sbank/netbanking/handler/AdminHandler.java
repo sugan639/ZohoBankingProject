@@ -47,12 +47,24 @@ public class AdminHandler {
 	    SessionData sessionData =  new SessionData();
 	    sessionData = (SessionData) req.getAttribute("sessionData");
         long adminId = sessionData.getUserId();
+        
+      
       
         System.out.println("User ID from the session data get profile method: "+adminId);
         AdminDAO adminDAO = new AdminDAO();
         PojoJsonConverter converter = new PojoJsonConverter();
 
         try {
+        	
+        	  //Authorising only admin
+    	    UserDAO userDao = new UserDAO();
+            Role role = userDao.getUserById(adminId).getRole();
+            if(role != Role.ADMIN) {
+            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+            	 return;
+            }
+            
         	Employee admin = adminDAO.getEmployeeById(adminId);
             if (admin != null) {
                 JSONObject jsonAdmin = converter.pojoToJson(admin);
@@ -76,7 +88,21 @@ public class AdminHandler {
 	// 2. GET /admin/branches/{branch_id}
 	public void getBranchById(HttpServletRequest req, HttpServletResponse res) throws TaskException {
 	    try {
+
+	    	//Authorization 
+		    SessionData sessionData =  new SessionData();
+		    sessionData = (SessionData) req.getAttribute("sessionData");
+	        long adminId = sessionData.getUserId();
 	    	
+	    	 UserDAO userDao = new UserDAO();
+	            Role role = userDao.getUserById(adminId).getRole();
+	            if(role != Role.ADMIN) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
+	            
+	            
 	        String branchIdStr = req.getParameter("branchId");
 
 	        if (branchIdStr == null || branchIdStr.isEmpty()) {
@@ -125,6 +151,15 @@ public class AdminHandler {
 		    sessionData = (SessionData) req.getAttribute("sessionData");
 	        long adminId = sessionData.getUserId();		// UserID from session data
 	      
+	      	//Authorization 
+		 	 UserDAO userDao = new UserDAO();
+	            Role role = userDao.getUserById(adminId).getRole();
+	            if(role != Role.ADMIN) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
+	            
 	        Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
 	      
 	        String ifscCode = json.optString("ifsc_code", null);
@@ -159,6 +194,20 @@ public class AdminHandler {
 	
 	// 4. GET /admin/users/{user_id}
 	public void getUser(HttpServletRequest req, HttpServletResponse res) throws  TaskException {
+		
+	  	//Authorization 
+	    SessionData sessionData =  new SessionData();
+	    sessionData = (SessionData) req.getAttribute("sessionData");
+        long adminId = sessionData.getUserId();
+    	
+    	 UserDAO userDao = new UserDAO();
+            Role role = userDao.getUserById(adminId).getRole();
+            if(role != Role.ADMIN) {
+            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+            	 return;
+            }
+            
 	    String userIdParam = req.getParameter("user_id");
 
 	    long userId;
@@ -218,12 +267,31 @@ public class AdminHandler {
 
 	// 5. PUT /admin/users/update
 	public void updateUser(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+		
+		
 	    RequestJsonConverter jsonConverter = new RequestJsonConverter();
 	    UserDAO userDAO = new UserDAO();
 	    AdminDAO adminDAO = new AdminDAO();
 	    CustomerDAO customerDAO = new CustomerDAO();
+	    
+	    
 
 	    try {
+	    	
+	      	//Authorization 
+		    SessionData sessionData =  new SessionData();
+		    sessionData = (SessionData) req.getAttribute("sessionData");
+	        long adminId = sessionData.getUserId();
+	    	
+	    	 UserDAO userDao = new UserDAO();
+	            Role authRole = userDao.getUserById(adminId).getRole();
+	            if(authRole != Role.ADMIN) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
+	            
+	    	
 	        JSONObject json = jsonConverter.convertToJson(req);
 
 	        if (json == null || json.isEmpty()) {
@@ -240,8 +308,6 @@ public class AdminHandler {
 	                new ErrorResponse("Bad Request", 400, "user_id is required"));
 	            return;
 	        }
-
-	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
 	        long modifiedBy = sessionData.getUserId();
 
 	        // Fetch role
@@ -314,6 +380,20 @@ public class AdminHandler {
 	    TransactionDAO transactionDAO = new TransactionDAO();
 
 	    try {
+	    	
+	    	//Authorization 
+		    SessionData sessionData =  new SessionData();
+		    sessionData = (SessionData) req.getAttribute("sessionData");
+	        long adminId = sessionData.getUserId();
+	    	
+	    	 UserDAO userDao = new UserDAO();
+	            Role authRole = userDao.getUserById(adminId).getRole();
+	            if(authRole != Role.ADMIN) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
+	            
 	        JSONObject json = jsonConverter.convertToJson(req);
 
 	        Long accountNumber = json.has("account_number") ? json.getLong("account_number") : null;
@@ -326,7 +406,6 @@ public class AdminHandler {
 	        }
 
 	        // Get session data to track who performed the deposit
-	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
 	        long doneBy = sessionData.getUserId();
 
 	        TransactionType transactionType = TransactionType.DEPOSIT;
@@ -369,6 +448,20 @@ public class AdminHandler {
 	    TransactionDAO transactionDAO = new TransactionDAO();
 
 	    try {
+	    	
+	    	//Authorization 
+		    SessionData sessionData =  new SessionData();
+		    sessionData = (SessionData) req.getAttribute("sessionData");
+	        long adminId = sessionData.getUserId();
+	    	
+	    	 UserDAO userDao = new UserDAO();
+	            Role authRole = userDao.getUserById(adminId).getRole();
+	            if(authRole != Role.ADMIN) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
+	            
 	        JSONObject json = jsonConverter.convertToJson(req);
 
 	        Long accountNumber = json.has("account_number") ? json.getLong("account_number") : null;
@@ -381,7 +474,6 @@ public class AdminHandler {
 	        }
 
 	        // Get session data to track who performed the withdrawal
-	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
 	        long doneBy = sessionData.getUserId();
 
 	        TransactionType transactionType = TransactionType.WITHDRAWAL;
@@ -421,6 +513,18 @@ public class AdminHandler {
 	    TransactionUtil transactionUtil = new TransactionUtil();
 
 	    try {
+	    	//Authorization 
+		    SessionData sessionData =  new SessionData();
+		    sessionData = (SessionData) req.getAttribute("sessionData");
+	        long adminId = sessionData.getUserId();
+	    	
+	    	 UserDAO userDao = new UserDAO();
+	            Role authRole = userDao.getUserById(adminId).getRole();
+	            if(authRole != Role.ADMIN) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
 	        JSONObject json = jsonConverter.convertToJson(req);
 
 	        Long fromAccount = json.has("from_account") ? json.getLong("from_account") : null;
@@ -428,7 +532,6 @@ public class AdminHandler {
 	        Double amount = json.has("amount") ? json.getDouble("amount") : null;
 	        String transferType = json.optString("type", null);  // Expected: "INTRA_BANK" or "INTER_BANK"
 	        String ifscCode = json.optString("ifsc_code", null);  // optional
-	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
 
 	        if (fromAccount == null || toAccount == null || amount == null || amount <= 0 || transferType == null) {
 	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
@@ -487,6 +590,20 @@ public class AdminHandler {
 	    TransactionDAO transactionDAO = new TransactionDAO();
 
 	    try {
+	    	
+	    	//Authorization 
+		    SessionData sessionData =  new SessionData();
+		    sessionData = (SessionData) req.getAttribute("sessionData");
+	        long adminId = sessionData.getUserId();
+	    	
+	    	 UserDAO userDao = new UserDAO();
+	            Role authRole = userDao.getUserById(adminId).getRole();
+	            if(authRole != Role.ADMIN) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
+	            
 	        JSONObject json = converter.convertToJson(req);
 
 	        Long txnId = json.has("transaction_id") ? json.getLong("transaction_id") : null;
@@ -549,6 +666,18 @@ public class AdminHandler {
         UserDAO userDAO = new UserDAO();
 
         try {
+        	//Authorization 
+		    SessionData sessionData =  new SessionData();
+		    sessionData = (SessionData) req.getAttribute("sessionData");
+	        long adminId = sessionData.getUserId();
+	    	
+	    	 UserDAO userDao = new UserDAO();
+	            Role authRole = userDao.getUserById(adminId).getRole();
+	            if(authRole != Role.ADMIN) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
             JSONObject json = jsonConverter.convertToJson(req);
 
             Long userId = json.has("user_id") ? json.getLong("user_id") : null;
@@ -570,7 +699,6 @@ public class AdminHandler {
             }
 
             // Get admin ID from session (created_by, modified_by)
-            SessionData sessionData = (SessionData) req.getAttribute("sessionData");
             long createdBy = sessionData.getUserId();
 
             // Create the account
@@ -601,6 +729,20 @@ public class AdminHandler {
         RandomPasswordGenerator randomPassword = new RandomPasswordGenerator();
 
         try {
+        	
+        	//Authorization 
+		    SessionData sessionData =  new SessionData();
+		    sessionData = (SessionData) req.getAttribute("sessionData");
+	        long adminId = sessionData.getUserId();
+	    	
+	    	 UserDAO userDao = new UserDAO();
+	            Role authRole = userDao.getUserById(adminId).getRole();
+	            if(authRole != Role.ADMIN) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
+	            
             // Get JSON from request
             JSONObject json = jsonConverter.convertToJson(req);
 
@@ -613,13 +755,13 @@ public class AdminHandler {
             
             // Generate secure password
             String password = randomPassword.generateRandomPassword(8);
+            String hashedPassword = BcryptService.hashPassword(password);
 
             // Get admin ID from session for tracking
-            SessionData sessionData = (SessionData) req.getAttribute("sessionData");
             long createdBy = sessionData.getUserId();
 
             // Validate role
-            if (!role.equals("ADMIN") && !role.equals("EMPLOYEE")) {
+            if (!role.equals(Role.ADMIN) && !role.equals(Role.EMPLOYEE)) {
                 ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
                     new ErrorResponse("Bad Request", 400, "Role must be either 'ADMIN' or 'EMPLOYEE'"));
                 return;
@@ -631,9 +773,11 @@ public class AdminHandler {
                         new ErrorResponse("Bad Request", 400, "All fields are required"));
                 return;
             }
+            
+            
 
             // Save to DB
-            Employee employee = adminDAO.addNewEmployee(name, password, email, mobileNumber, branchId, role, createdBy);
+            Employee employee = adminDAO.addNewEmployee(name, hashedPassword, email, mobileNumber, branchId, role, createdBy);
 
             // Convert to JSON and return
             JSONObject responseJson = pojoConverter.pojoToJson(employee);
@@ -662,11 +806,22 @@ public class AdminHandler {
         RandomPasswordGenerator passwordGenerator = new RandomPasswordGenerator();
 
         try {
+        	//Authorization 
+		    SessionData sessionData =  new SessionData();
+		    sessionData = (SessionData) req.getAttribute("sessionData");
+	        long adminId = sessionData.getUserId();
+	    	
+	    	 UserDAO userDao = new UserDAO();
+	            Role authRole = userDao.getUserById(adminId).getRole();
+	            if(authRole != Role.ADMIN) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
             // Extract JSON from request
             JSONObject json = jsonConverter.convertToJson(req);
 
             // Get session data (to know who created the customer)
-            SessionData sessionData = (SessionData) req.getAttribute("sessionData");
             long createdBy = sessionData.getUserId();
 
             // Required fields from request
@@ -720,6 +875,18 @@ public class AdminHandler {
         AdminDAO adminDAO = new AdminDAO();
 
         try {
+        	//Authorization 
+		    SessionData sessionData =  new SessionData();
+		    sessionData = (SessionData) req.getAttribute("sessionData");
+	        long adminId = sessionData.getUserId();
+	    	
+	    	 UserDAO userDao = new UserDAO();
+	            Role authRole = userDao.getUserById(adminId).getRole();
+	            if(authRole != Role.ADMIN) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
             JSONObject json = jsonConverter.convertToJson(req);
 
             Long accountNumber = json.has("account_number") ? json.getLong("account_number") : null;
@@ -732,7 +899,6 @@ public class AdminHandler {
             }
 
             // Get modifier (admin) from session
-            SessionData sessionData = (SessionData) req.getAttribute("sessionData");
             long modifiedBy = sessionData.getUserId();
 
             switch (operation) {
@@ -763,6 +929,6 @@ public class AdminHandler {
         }
     }
 
-   
+   //
 
 }

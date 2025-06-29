@@ -117,6 +117,9 @@ public class AdminDAO {
 	                emp.setMobileNumber(mobileNumber);
 	                emp.setBranchId(branchId);
 	                emp.setRole(role); // "ADMIN" or "EMPLOYEE"
+	                emp.setCreatedAt(currentTime);
+	                emp.setModifiedAt(currentTime);
+	                emp.setModifiedBy(createdBy);
 
 	                return emp;
 

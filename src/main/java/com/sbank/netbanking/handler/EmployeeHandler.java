@@ -10,8 +10,8 @@ import javax.servlet.http.HttpServletResponse;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import com.sbank.netbanking.dao.AdminDAO;
 import com.sbank.netbanking.dao.CustomerDAO;
+import com.sbank.netbanking.dao.EmployeeDAO;
 import com.sbank.netbanking.dao.TransactionDAO;
 import com.sbank.netbanking.dao.TransactionUtil;
 import com.sbank.netbanking.dao.UserDAO;
@@ -24,8 +24,9 @@ import com.sbank.netbanking.model.Employee;
 import com.sbank.netbanking.model.NewCustomer;
 import com.sbank.netbanking.model.SessionData;
 import com.sbank.netbanking.model.Transaction;
-import com.sbank.netbanking.model.User;
 import com.sbank.netbanking.model.Transaction.TransactionType;
+import com.sbank.netbanking.model.User;
+import com.sbank.netbanking.model.User.Role;
 import com.sbank.netbanking.service.BcryptService;
 import com.sbank.netbanking.util.DateUtil;
 import com.sbank.netbanking.util.ErrorResponseUtil;
@@ -39,17 +40,31 @@ public class EmployeeHandler {
 	// GET /employee/profile/{user_id}
 	public void getProfile(HttpServletRequest req, HttpServletResponse res) throws TaskException{
 
+
 		
 	    SessionData sessionData =  new SessionData();
 	    sessionData = (SessionData) req.getAttribute("sessionData");
-        long adminId = sessionData.getUserId();
+        long employeeId = sessionData.getUserId();
       
-        System.out.println("User ID from the session data get profile method: "+adminId);
-        AdminDAO adminDAO = new AdminDAO();
+        System.out.println("User ID from the session data get profile method: "+employeeId);
+        EmployeeDAO employeeDao = new EmployeeDAO();
         PojoJsonConverter converter = new PojoJsonConverter();
+        
+        
 
         try {
-        	Employee admin = adminDAO.getEmployeeById(adminId);
+	    	//Authorization 
+	
+	    	
+	    	 UserDAO userDAO = new UserDAO();
+	            Role authRole = userDAO.getUserById(employeeId).getRole();
+	            if(authRole != Role.EMPLOYEE) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
+	            
+        	Employee admin = employeeDao.getEmployeeById(employeeId);
             if (admin != null) {
                 JSONObject jsonAdmin = converter.pojoToJson(admin);
                 res.setContentType("application/json");
@@ -68,6 +83,18 @@ public class EmployeeHandler {
 
     // GET /employee/users/{user_id}
     public void getUser(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    	//Authorization 
+	    SessionData sessionData =  new SessionData();
+	    sessionData = (SessionData) req.getAttribute("sessionData");
+        long employeeId = sessionData.getUserId();
+    	
+    	 UserDAO userDao = new UserDAO();
+            Role authRole = userDao.getUserById(employeeId).getRole();
+            if(authRole != Role.EMPLOYEE) {
+            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+            	 return;
+            }
     	 String userIdParam = req.getParameter("user_id");
 
  	    long userId;
@@ -106,8 +133,8 @@ public class EmployeeHandler {
 
  	        case EMPLOYEE:
  	        case ADMIN:
- 	            AdminDAO adminDAO = new AdminDAO();
- 	            Employee employee = adminDAO.getEmployeeById(userId);
+ 	        	EmployeeDAO employeeDAO = new EmployeeDAO();
+ 	            Employee employee = employeeDAO.getEmployeeById(userId);
  	            if (employee != null) {
  	                JSONObject empJson = converter.pojoToJson(employee);
  	                res.setContentType("application/json");
@@ -126,10 +153,22 @@ public class EmployeeHandler {
 
     // POST /employee/customers
     public void addCustomer(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    	//Authorization 
+	    SessionData sessionData =  new SessionData();
+	    sessionData = (SessionData) req.getAttribute("sessionData");
+        long employeeId = sessionData.getUserId();
+    	
+    	 UserDAO userDao = new UserDAO();
+            Role authRole = userDao.getUserById(employeeId).getRole();
+            if(authRole != Role.EMPLOYEE) {
+            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+            	 return;
+            }
         
     	RequestJsonConverter jsonConverter = new RequestJsonConverter();
         PojoJsonConverter pojoConverter = new PojoJsonConverter();
-        AdminDAO adminDAO = new AdminDAO();
+        EmployeeDAO employeeDAO = new EmployeeDAO();
         RandomPasswordGenerator passwordGenerator = new RandomPasswordGenerator();
 
         try {
@@ -137,7 +176,6 @@ public class EmployeeHandler {
             JSONObject json = jsonConverter.convertToJson(req);
 
             // Get session data (to know who created the customer)
-            SessionData sessionData = (SessionData) req.getAttribute("sessionData");
             long createdBy = sessionData.getUserId();
 
             // Required fields from request
@@ -166,7 +204,7 @@ public class EmployeeHandler {
             long dobMillis = DateUtil.convertDateToEpoch(dobString);
 
             // Save to DB
-            NewCustomer customer = adminDAO.addNewCustomer(name, hashedPassword, email, mobileNumber, dobMillis,
+            NewCustomer customer = employeeDAO.addNewCustomer(name, hashedPassword, email, mobileNumber, dobMillis,
                                                         address, aadharNumber, panNumber, createdBy, role);
 
             // Convert response
@@ -183,11 +221,83 @@ public class EmployeeHandler {
                 new ErrorResponse("TaskException", 500, e.getMessage()));
         }
     }
+    
+
+    // POST /employee/account
+    public void createAccount(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    	//Authorization 
+	    SessionData sessionData =  new SessionData();
+	    sessionData = (SessionData) req.getAttribute("sessionData");
+        long employeeId = sessionData.getUserId();
+    	
+    	 UserDAO userDao = new UserDAO();
+            Role authRole = userDao.getUserById(employeeId).getRole();
+            if(authRole != Role.EMPLOYEE) {
+            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+            	 return;
+            }
+    	RequestJsonConverter jsonConverter = new RequestJsonConverter();
+        PojoJsonConverter pojoConverter = new PojoJsonConverter();
+        EmployeeDAO employeeDAO = new EmployeeDAO();
+        UserDAO userDAO = new UserDAO();
+
+        try {
+            JSONObject json = jsonConverter.convertToJson(req);
+
+            Long userId = json.has("user_id") ? json.getLong("user_id") : null;
+            Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
+            Double initialBalance = json.has("balance") ? json.getDouble("balance") : 0.0;
+
+            if (userId == null || branchId == null) {
+                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+                    new ErrorResponse("Bad Request", 400, "user_id and branch_id are required"));
+                return;
+            }
+
+            // Validate user is a customer
+            User user = userDAO.getUserById(userId);
+            if (user == null || !user.getRole().name().equals("CUSTOMER")) {
+                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+                    new ErrorResponse("Bad Request", 400, "Account can only be created for customers"));
+                return;
+            }
+
+            // Get admin ID from session (created_by, modified_by)
+            long createdBy = sessionData.getUserId();
+
+            // Create the account
+            Account account = employeeDAO.createCustomerAccount(userId, branchId, initialBalance, createdBy);
+
+            // Return created account
+            JSONObject jsonResponse = pojoConverter.pojoToJson(account);
+            jsonResponse.put("message", "Account created successfully");
+
+            res.setContentType("application/json");
+            res.getWriter().write(jsonResponse.toString());
+
+        } catch (IOException e) {
+            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                new ErrorResponse("TaskException", 500, e.getMessage()));
+        }
+    }
 
 
     // GET /employee/transactions
     public void findTransactions(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-    	 RequestJsonConverter converter = new RequestJsonConverter();
+    	//Authorization 
+	    SessionData sessionData =  new SessionData();
+	    sessionData = (SessionData) req.getAttribute("sessionData");
+        long employeeId = sessionData.getUserId();
+    	
+    	 UserDAO userDao = new UserDAO();
+            Role authRole = userDao.getUserById(employeeId).getRole();
+            if(authRole != Role.EMPLOYEE) {
+            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+            	 return;
+            }
+    	RequestJsonConverter converter = new RequestJsonConverter();
  	    PojoJsonConverter pojoConverter = new PojoJsonConverter();
  	    TransactionDAO transactionDAO = new TransactionDAO();
 
@@ -232,9 +342,21 @@ public class EmployeeHandler {
 
     // PUT /employee/users/{user_id}
     public void updateUser(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    	//Authorization 
+	    SessionData sessionData =  new SessionData();
+	    sessionData = (SessionData) req.getAttribute("sessionData");
+        long employeeId = sessionData.getUserId();
+    	
+    	 UserDAO userDao = new UserDAO();
+            Role authRole = userDao.getUserById(employeeId).getRole();
+            if(authRole != Role.EMPLOYEE) {
+            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+            	 return;
+            }
     	RequestJsonConverter jsonConverter = new RequestJsonConverter();
 	    UserDAO userDAO = new UserDAO();
-	    AdminDAO adminDAO = new AdminDAO();
+	    EmployeeDAO employeeDAO = new EmployeeDAO();
 	    CustomerDAO customerDAO = new CustomerDAO();
 
 	    try {
@@ -255,7 +377,6 @@ public class EmployeeHandler {
 	            return;
 	        }
 
-	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
 	        long modifiedBy = sessionData.getUserId();
 
 	        // Fetch role
@@ -303,7 +424,7 @@ public class EmployeeHandler {
 	            }
 
 	            Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
-	            adminDAO.updateEmployeeFields(userId, branchId);
+	            employeeDAO.updateEmployeeFields(userId, branchId);
 	        }
 	        
 	        else if(role.equals("ADMIN")) {
@@ -328,6 +449,18 @@ public class EmployeeHandler {
 
     // POST /employee/transactions/deposit
     public void deposit(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    	//Authorization 
+	    SessionData sessionData =  new SessionData();
+	    sessionData = (SessionData) req.getAttribute("sessionData");
+        long employeeId = sessionData.getUserId();
+    	
+    	 UserDAO userDao = new UserDAO();
+            Role authRole = userDao.getUserById(employeeId).getRole();
+            if(authRole != Role.EMPLOYEE) {
+            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+            	 return;
+            }
     	RequestJsonConverter jsonConverter = new RequestJsonConverter();
 	    PojoJsonConverter pojoConverter = new PojoJsonConverter();
 	    TransactionDAO transactionDAO = new TransactionDAO();
@@ -345,7 +478,6 @@ public class EmployeeHandler {
 	        }
 
 	        // Get session data to track who performed the deposit
-	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
 	        long doneBy = sessionData.getUserId();
 
 	        TransactionType transactionType = TransactionType.DEPOSIT;
@@ -379,6 +511,19 @@ public class EmployeeHandler {
 
     // POST /employee/transactions/withdraw
     public void withdraw(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    	//Authorization 
+	    SessionData sessionData =  new SessionData();
+	    sessionData = (SessionData) req.getAttribute("sessionData");
+        long employeeId = sessionData.getUserId();
+    	
+    	 UserDAO userDao = new UserDAO();
+            Role authRole = userDao.getUserById(employeeId).getRole();
+            if(authRole != Role.EMPLOYEE) {
+            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+            	 return;
+            }
+            
     	 RequestJsonConverter jsonConverter = new RequestJsonConverter();
  	    PojoJsonConverter pojoConverter = new PojoJsonConverter();
  	    TransactionDAO transactionDAO = new TransactionDAO();
@@ -396,7 +541,6 @@ public class EmployeeHandler {
  	        }
 
  	        // Get session data to track who performed the withdrawal
- 	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
  	        long doneBy = sessionData.getUserId();
 
  	        TransactionType transactionType = TransactionType.WITHDRAWAL;
@@ -429,6 +573,18 @@ public class EmployeeHandler {
 
     // POST /employee/transactions/transfer
     public void transfer(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    	//Authorization 
+	    SessionData sessionData =  new SessionData();
+	    sessionData = (SessionData) req.getAttribute("sessionData");
+        long employeeId = sessionData.getUserId();
+    	
+    	 UserDAO userDao = new UserDAO();
+            Role authRole = userDao.getUserById(employeeId).getRole();
+            if(authRole != Role.EMPLOYEE) {
+            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+            	 return;
+            }
     	 RequestJsonConverter jsonConverter = new RequestJsonConverter();
  	    TransactionDAO transactionDAO = new TransactionDAO();
  	    TransactionUtil transactionUtil = new TransactionUtil();
@@ -441,7 +597,6 @@ public class EmployeeHandler {
  	        Double amount = json.has("amount") ? json.getDouble("amount") : null;
  	        String transferType = json.optString("type", null);  // Expected: "INTRA_BANK" or "INTER_BANK"
  	        String ifscCode = json.optString("ifsc_code", null);  // optional
- 	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
 
  	        if (fromAccount == null || toAccount == null || amount == null || amount <= 0 || transferType == null) {
  	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
@@ -484,63 +639,74 @@ public class EmployeeHandler {
  	    }
     }
 
-    // POST /employee/account
-    public void createAccount(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-    	RequestJsonConverter jsonConverter = new RequestJsonConverter();
-        PojoJsonConverter pojoConverter = new PojoJsonConverter();
-        AdminDAO adminDAO = new AdminDAO();
-        UserDAO userDAO = new UserDAO();
 
-        try {
-            JSONObject json = jsonConverter.convertToJson(req);
+  // POST /employee/accounts/update
+  public void editBranchAccounts(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+	//Authorization 
+	    SessionData sessionData =  new SessionData();
+	    sessionData = (SessionData) req.getAttribute("sessionData");
+      long employeeId = sessionData.getUserId();
+  	
+  	 UserDAO userDao = new UserDAO();
+          Role authRole = userDao.getUserById(employeeId).getRole();
+          if(authRole != Role.EMPLOYEE) {
+          	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+                       new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+          	 return;
+          }
+	  RequestJsonConverter jsonConverter = new RequestJsonConverter();
+	  EmployeeDAO employeeDAO = new EmployeeDAO();
 
-            Long userId = json.has("user_id") ? json.getLong("user_id") : null;
-            Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
-            Double initialBalance = json.has("balance") ? json.getDouble("balance") : 0.0;
+      try {
+          JSONObject json = jsonConverter.convertToJson(req);
 
-            if (userId == null || branchId == null) {
-                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                    new ErrorResponse("Bad Request", 400, "user_id and branch_id are required"));
-                return;
-            }
+          Long accountNumber = json.has("account_number") ? json.getLong("account_number") : null;
+          String operation = json.optString("operation", "").toUpperCase();
 
-            // Validate user is a customer
-            User user = userDAO.getUserById(userId);
-            if (user == null || !user.getRole().name().equals("CUSTOMER")) {
-                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                    new ErrorResponse("Bad Request", 400, "Account can only be created for customers"));
-                return;
-            }
+          if (accountNumber == null || operation.isEmpty()) {
+              ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+                      new ErrorResponse("Bad Request", 400, "account_number and operation are required"));
+              return;
+          }
 
-            // Get admin ID from session (created_by, modified_by)
-            SessionData sessionData = (SessionData) req.getAttribute("sessionData");
-            long createdBy = sessionData.getUserId();
+          // Get modifier (employee) from session
+          long modifiedBy = sessionData.getUserId();
 
-            // Create the account
-            Account account = adminDAO.createCustomerAccount(userId, branchId, initialBalance, createdBy);
+          switch (operation) {
+              case "ACTIVATE":
+                  employeeDAO.changeAccountStatus(accountNumber, "ACTIVE", modifiedBy);
+                  break;
+              case "INACTIVATE":
+                  employeeDAO.changeAccountStatus(accountNumber, "INACTIVE", modifiedBy);
+                  break;
+              case "DELETE":
+                  employeeDAO.deleteAccount(accountNumber);
+                  break;
+              default:
+                  ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+                          new ErrorResponse("Bad Request", 400, "Invalid operation. Use ACTIVATE, INACTIVATE, or DELETE."));
+                  return;
+          }
 
-            // Return created account
-            JSONObject jsonResponse = pojoConverter.pojoToJson(account);
-            jsonResponse.put("message", "Account created successfully");
+          JSONObject response = new JSONObject();
+          response.put("message", "Account " + operation.toLowerCase() + "d successfully");
+          res.setContentType("application/json");
+          res.getWriter().write(response.toString());
 
-            res.setContentType("application/json");
-            res.getWriter().write(jsonResponse.toString());
-
-        } catch (IOException e) {
-            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                new ErrorResponse("TaskException", 500, e.getMessage()));
-        }
-    }
-    
-//  // GET /employee/branches/requests
-//  public void getBranchRequests(HttpServletRequest req, HttpServletResponse res) throws IOException {
-//      res.getWriter().write("{\"status\":\"EmployeeHandler.getBranchRequests not implemented\"}");
-//  }
-
-  // GET /employee/accounts
-  public void getBranchAccounts(HttpServletRequest req, HttpServletResponse res) throws IOException {
-      res.getWriter().write("{\"status\":\"EmployeeHandler.getBranchAccounts not implemented\"}");
+      } catch (IOException e) {
+          e.printStackTrace();
+          ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                  new ErrorResponse("Server Error", 500, e.getMessage()));
+      }
   }
+  
+  
+  
+  
+//// GET /employee/branches/requests
+//public void getBranchRequests(HttpServletRequest req, HttpServletResponse res) throws IOException {
+//    res.getWriter().write("{\"status\":\"EmployeeHandler.getBranchRequests not implemented\"}");
+//}
 
   
   
