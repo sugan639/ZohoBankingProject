@@ -10,9 +10,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import com.sbank.netbanking.dao.AccountDAO;
+import com.sbank.netbanking.dao.BeneficiaryDAO;
 import com.sbank.netbanking.dao.CustomerDAO;
 import com.sbank.netbanking.dao.TransactionDAO;
-import com.sbank.netbanking.dao.TransactionUtil;
 import com.sbank.netbanking.dao.UserDAO;
 import com.sbank.netbanking.dto.ErrorResponse;
 import com.sbank.netbanking.exceptions.TaskException;
@@ -27,6 +27,7 @@ import com.sbank.netbanking.util.DateUtil;
 import com.sbank.netbanking.util.ErrorResponseUtil;
 import com.sbank.netbanking.util.PojoJsonConverter;
 import com.sbank.netbanking.util.RequestJsonConverter;
+import com.sbank.netbanking.util.TransactionUtil;
 
 public class CustomerHandler {
     public void getProfile(HttpServletRequest req, HttpServletResponse res) throws TaskException {
@@ -294,7 +295,6 @@ public class CustomerHandler {
 
     public void addBeneficiary(HttpServletRequest req, HttpServletResponse res) throws TaskException {
         RequestJsonConverter jsonConverter = new RequestJsonConverter();
-        CustomerDAO customerDAO = new CustomerDAO();
 
         try {
             JSONObject json = jsonConverter.convertToJson(req);
@@ -324,7 +324,9 @@ public class CustomerHandler {
             beneficiary.setModifiedAt(System.currentTimeMillis());
             beneficiary.setModifiedBy(doneBy);
 
-            long savedId = customerDAO.addBeneficiary(beneficiary);
+            BeneficiaryDAO beneficiaryDAO  = new BeneficiaryDAO();
+
+            long savedId = beneficiaryDAO.addBeneficiary(beneficiary);
 
             JSONObject jsonResp = new JSONObject();
             jsonResp.put("status", "Beneficiary added successfully");
@@ -348,7 +350,7 @@ public class CustomerHandler {
 
 
     public void getBeneficiary(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-        CustomerDAO customerDAO = new CustomerDAO();
+        BeneficiaryDAO beneficiaryDAO  = new BeneficiaryDAO();
         PojoJsonConverter converter = new PojoJsonConverter();
 
         try {
@@ -357,7 +359,7 @@ public class CustomerHandler {
             long customerId = sessionData.getUserId();
 
             // Fetch beneficiaries from DB
-            List<Beneficiary> beneficiaries = customerDAO.getBeneficiariesByCustomerId(customerId);
+            List<Beneficiary> beneficiaries = beneficiaryDAO.getBeneficiariesByCustomerId(customerId);
 
             JSONArray jsonArray = new JSONArray();
             for (Beneficiary b : beneficiaries) {
@@ -384,6 +386,7 @@ public class CustomerHandler {
     }
 
 }
+
 
 
 

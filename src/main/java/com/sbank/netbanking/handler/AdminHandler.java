@@ -10,11 +10,11 @@ import javax.servlet.http.HttpServletResponse;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import com.sbank.netbanking.dao.AdminDAO;
+import com.sbank.netbanking.dao.AccountDAO;
 import com.sbank.netbanking.dao.BranchDAO;
 import com.sbank.netbanking.dao.CustomerDAO;
+import com.sbank.netbanking.dao.EmployeeDAO;
 import com.sbank.netbanking.dao.TransactionDAO;
-import com.sbank.netbanking.dao.TransactionUtil;
 import com.sbank.netbanking.dao.UserDAO;
 import com.sbank.netbanking.dto.ErrorResponse;
 import com.sbank.netbanking.dto.UserDTO;
@@ -30,11 +30,13 @@ import com.sbank.netbanking.model.Transaction.TransactionType;
 import com.sbank.netbanking.model.User;
 import com.sbank.netbanking.model.User.Role;
 import com.sbank.netbanking.service.BcryptService;
+import com.sbank.netbanking.util.BranchUtil;
 import com.sbank.netbanking.util.DateUtil;
 import com.sbank.netbanking.util.ErrorResponseUtil;
 import com.sbank.netbanking.util.PojoJsonConverter;
 import com.sbank.netbanking.util.RandomPasswordGenerator;
 import com.sbank.netbanking.util.RequestJsonConverter;
+import com.sbank.netbanking.util.TransactionUtil;
 import com.sbank.netbanking.util.UserMapper;
 
 public class AdminHandler {
@@ -51,7 +53,7 @@ public class AdminHandler {
       
       
         System.out.println("User ID from the session data get profile method: "+adminId);
-        AdminDAO adminDAO = new AdminDAO();
+        EmployeeDAO employeeDAO = new EmployeeDAO();
         PojoJsonConverter converter = new PojoJsonConverter();
 
         try {
@@ -65,7 +67,7 @@ public class AdminHandler {
             	 return;
             }
             
-        	Employee admin = adminDAO.getEmployeeById(adminId);
+        	Employee admin = employeeDAO.getEmployeeById(adminId);
             if (admin != null) {
                 JSONObject jsonAdmin = converter.pojoToJson(admin);
                 res.setContentType("application/json");
@@ -246,8 +248,8 @@ public class AdminHandler {
 
 	        case EMPLOYEE:
 	        case ADMIN:
-	            AdminDAO adminDAO = new AdminDAO();
-	            Employee employee = adminDAO.getEmployeeById(userId);
+	            EmployeeDAO employeeDAO = new EmployeeDAO();
+	            Employee employee = employeeDAO.getEmployeeById(userId);
 	            if (employee != null) {
 	                JSONObject empJson = converter.pojoToJson(employee);
 	                res.setContentType("application/json");
@@ -271,7 +273,7 @@ public class AdminHandler {
 		
 	    RequestJsonConverter jsonConverter = new RequestJsonConverter();
 	    UserDAO userDAO = new UserDAO();
-	    AdminDAO adminDAO = new AdminDAO();
+        EmployeeDAO employeeDAO = new EmployeeDAO();
 	    CustomerDAO customerDAO = new CustomerDAO();
 	    
 	    
@@ -355,7 +357,7 @@ public class AdminHandler {
 	            }
 
 	            Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
-	            adminDAO.updateEmployeeFields(userId, branchId);
+	            employeeDAO.updateEmployeeFields(userId, branchId);
 	        }
 
 	        JSONObject response = new JSONObject();
@@ -662,7 +664,7 @@ public class AdminHandler {
     public void createAccount(HttpServletRequest req, HttpServletResponse res) throws TaskException {
         RequestJsonConverter jsonConverter = new RequestJsonConverter();
         PojoJsonConverter pojoConverter = new PojoJsonConverter();
-        AdminDAO adminDAO = new AdminDAO();
+        AccountDAO accountDAO = new AccountDAO();
         UserDAO userDAO = new UserDAO();
 
         try {
@@ -702,7 +704,7 @@ public class AdminHandler {
             long createdBy = sessionData.getUserId();
 
             // Create the account
-            Account account = adminDAO.createCustomerAccount(userId, branchId, initialBalance, createdBy);
+            Account account = accountDAO.createCustomerAccount(userId, branchId, initialBalance, createdBy);
 
             // Return created account
             JSONObject jsonResponse = pojoConverter.pojoToJson(account);
@@ -725,7 +727,7 @@ public class AdminHandler {
     public void addEmployee(HttpServletRequest req, HttpServletResponse res) throws TaskException {
         RequestJsonConverter jsonConverter = new RequestJsonConverter();
         PojoJsonConverter pojoConverter = new PojoJsonConverter();
-        AdminDAO adminDAO = new AdminDAO();
+        EmployeeDAO employeeDAO = new EmployeeDAO();
         RandomPasswordGenerator randomPassword = new RandomPasswordGenerator();
 
         try {
@@ -777,7 +779,7 @@ public class AdminHandler {
             
 
             // Save to DB
-            Employee employee = adminDAO.addNewEmployee(name, hashedPassword, email, mobileNumber, branchId, role, createdBy);
+            Employee employee = employeeDAO.addNewEmployee(name, hashedPassword, email, mobileNumber, branchId, role, createdBy);
 
             // Convert to JSON and return
             JSONObject responseJson = pojoConverter.pojoToJson(employee);
@@ -802,7 +804,7 @@ public class AdminHandler {
     public void addCustomer(HttpServletRequest req, HttpServletResponse res) throws TaskException {
         RequestJsonConverter jsonConverter = new RequestJsonConverter();
         PojoJsonConverter pojoConverter = new PojoJsonConverter();
-        AdminDAO adminDAO = new AdminDAO();
+        CustomerDAO customerDAO = new CustomerDAO();
         RandomPasswordGenerator passwordGenerator = new RandomPasswordGenerator();
 
         try {
@@ -850,7 +852,7 @@ public class AdminHandler {
             long dobMillis = DateUtil.convertDateToEpoch(dobString);
 
             // Save to DB
-            NewCustomer customer = adminDAO.addNewCustomer(name, hashedPassword, email, mobileNumber, dobMillis,
+            NewCustomer customer = customerDAO.addNewCustomer(name, hashedPassword, email, mobileNumber, dobMillis,
                                                         address, aadharNumber, panNumber, createdBy, role);
 
             // Convert response
@@ -872,7 +874,7 @@ public class AdminHandler {
  // 11. PUT /admin/account/status
     public void updateAccountStatus(HttpServletRequest req, HttpServletResponse res) throws TaskException {
         RequestJsonConverter jsonConverter = new RequestJsonConverter();
-        AdminDAO adminDAO = new AdminDAO();
+        AccountDAO accountDAO = new AccountDAO();
 
         try {
         	//Authorization 
@@ -903,13 +905,13 @@ public class AdminHandler {
 
             switch (operation) {
                 case "ACTIVATE":
-                    adminDAO.changeAccountStatus(accountNumber, "ACTIVE", modifiedBy);
+                	accountDAO.changeAccountStatus(accountNumber, "ACTIVE", modifiedBy);
                     break;
                 case "INACTIVATE":
-                    adminDAO.changeAccountStatus(accountNumber, "INACTIVE", modifiedBy);
+                	accountDAO.changeAccountStatus(accountNumber, "INACTIVE", modifiedBy);
                     break;
                 case "DELETE":
-                    adminDAO.deleteAccount(accountNumber);
+                	accountDAO.deleteAccount(accountNumber);
                     break;
                 default:
                     ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
@@ -929,6 +931,63 @@ public class AdminHandler {
         }
     }
 
-   //
+    
+ // POST /admin/branches
+    public void createBranch(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+        RequestJsonConverter jsonConverter = new RequestJsonConverter();
+        PojoJsonConverter pojoConverter = new PojoJsonConverter();
+        BranchDAO branchDAO = new BranchDAO();
+
+        try {
+            JSONObject json = jsonConverter.convertToJson(req);
+
+            String newAdminIdString = json.optString("new_admin_id");
+            String ifscCode = json.optString("ifsc_code");
+            String bankName = json.optString("bank_name");
+            String location = json.optString("location");
+
+            if (newAdminIdString == null || bankName == null || bankName.isEmpty() || location == null || location.isEmpty()) {
+                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+                        new ErrorResponse("Bad Request", 400, "bank_name and location are required"));
+                return;
+            }
+            
+            
+
+            // Get admin user ID from session
+            SessionData sessionData = (SessionData) req.getAttribute("sessionData");
+            long adminId = sessionData.getUserId();
+
+            // Generate IFSC code if not provided
+            if (ifscCode == null || ifscCode.isEmpty()) {
+            	
+            	BranchUtil branchUtil = new BranchUtil(); 
+                ifscCode = branchUtil.generateIfscCode(bankName, location);
+            }
+
+        	Long newAdminId = Long.parseLong(newAdminIdString);
+
+            Branch branch = new Branch();
+            branch.setAdminId(newAdminId);
+            branch.setIfscCode(ifscCode);
+            branch.setBankName(bankName);
+            branch.setLocation(location);
+
+            // Create the branch
+            Branch createdBranch = branchDAO.createBranch(branch, adminId);
+
+            JSONObject responseJson = pojoConverter.pojoToJson(createdBranch);
+            responseJson.put("message", "Branch created successfully");
+
+            res.setContentType("application/json");
+            res.getWriter().write(responseJson.toString());
+
+        } catch (IOException e) {
+            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    new ErrorResponse("Error", 500, e.getMessage()));
+        }
+    }
+
+   
 
 }

@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,6 +15,59 @@ import com.sbank.netbanking.model.Account;
 import com.sbank.netbanking.model.Account.AccountStatus;
 
 public class AccountDAO {
+	
+	public Account createCustomerAccount(Long userId, Long branchId, Double balance, Long createdBy) throws TaskException {
+	    String sql = "INSERT INTO accounts (user_id, balance, branch_id, status, created_at, modified_at, modified_by) " +
+	                 "VALUES (?, ?, ?, 'ACTIVE', ?, ?, ?)";
+
+	    long currentTime = System.currentTimeMillis();
+
+	    try (ConnectionManager connectionManager = new ConnectionManager()) {
+	        connectionManager.initConnection();
+	        Connection conn = connectionManager.getConnection();
+
+	        try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+	            stmt.setLong(1, userId);
+	            stmt.setDouble(2, balance);
+	            stmt.setLong(3, branchId);
+	            stmt.setLong(4, currentTime);
+	            stmt.setLong(5, currentTime);
+	            stmt.setLong(6, createdBy);
+
+	            int rows = stmt.executeUpdate();
+	            if (rows == 0) {
+	                throw new TaskException("Account creation failed.");
+	            }
+
+	            ResultSet keys = stmt.getGeneratedKeys();
+	            if (keys.next()) {
+	                long accountNumber = keys.getLong(1);
+	                Account acc = new Account();
+	                acc.setAccountNumber(accountNumber);
+	                acc.setUserId(userId);
+	                acc.setBranchId(branchId);
+	                acc.setBalance(balance);
+	                acc.setStatus(AccountStatus.ACTIVE);
+	                acc.setCreatedAt(currentTime);
+	                acc.setModifiedAt(currentTime);
+	                acc.setModifiedBy(createdBy);
+	                return acc;
+	            } else {
+	                throw new TaskException("Failed to retrieve account number.");
+	            }
+	        }
+
+	    } catch (SQLException e) {
+	        throw new TaskException("Failed to create account", e);
+	    }
+	    
+	    catch (Exception e) {
+	        throw new TaskException(ExceptionMessages.DATABASE_CONNECTION_FAILED, e);
+	    }
+	    
+	    
+	}
+	
 
     public Account getAccountByNumber(long accountNumber) throws TaskException {
         String sql = "SELECT * FROM accounts WHERE account_number = ?";
@@ -102,6 +156,48 @@ public class AccountDAO {
 
         return accountList;
     }
+
+    
+
+	public void changeAccountStatus(Long accountNumber, String status, long modifiedBy) throws TaskException {
+	    String sql = "UPDATE accounts SET status = ?, modified_at = ?, modified_by = ? WHERE account_number = ?";
+	    long currentTime = System.currentTimeMillis();
+
+	    try (ConnectionManager connectionManager = new ConnectionManager()) {
+	        connectionManager.initConnection();
+	        Connection conn = connectionManager.getConnection();
+
+	        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+	            stmt.setString(1, status);
+	            stmt.setLong(2, currentTime);
+	            stmt.setLong(3, modifiedBy);
+	            stmt.setLong(4, accountNumber);
+	            stmt.executeUpdate();
+	        }
+	    } catch (SQLException e) {
+	        throw new TaskException("Failed to update account status", e);
+	    } catch (Exception e) {
+	        throw new TaskException(ExceptionMessages.DATABASE_CONNECTION_FAILED, e);
+	    }
+	}
+
+	public void deleteAccount(Long accountNumber) throws TaskException {
+	    String sql = "DELETE FROM accounts WHERE account_number = ?";
+
+	    try (ConnectionManager connectionManager = new ConnectionManager()) {
+	        connectionManager.initConnection();
+	        Connection conn = connectionManager.getConnection();
+
+	        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+	            stmt.setLong(1, accountNumber);
+	            stmt.executeUpdate();
+	        }
+	    } catch (SQLException e) {
+	        throw new TaskException("Failed to delete account", e);
+	    } catch (Exception e) {
+	        throw new TaskException(ExceptionMessages.DATABASE_CONNECTION_FAILED, e);
+	    }
+	}
 
 
 

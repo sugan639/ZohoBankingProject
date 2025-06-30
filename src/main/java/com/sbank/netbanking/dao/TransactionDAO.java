@@ -128,7 +128,7 @@ public class TransactionDAO {
 	
 	
 	public Transaction withdraw(Long fromAccountNumber, double amount, long doneBy,
-			TransactionType transactionType, long transactionId, long toAccountNumber, String ifcsCode) 
+			TransactionType transactionType, long transactionId, Long toAccountNumber, String ifcsCode) 
 					throws TaskException {
 		
 	    String getAccountSQL = "SELECT balance, user_id, status FROM accounts WHERE account_number = ?";

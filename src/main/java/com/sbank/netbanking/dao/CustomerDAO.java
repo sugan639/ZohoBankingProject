@@ -11,10 +11,88 @@ import java.util.List;
 import com.sbank.netbanking.dbconfig.ConnectionManager;
 import com.sbank.netbanking.exceptions.ExceptionMessages;
 import com.sbank.netbanking.exceptions.TaskException;
-import com.sbank.netbanking.model.Beneficiary;
 import com.sbank.netbanking.model.Customer;
+import com.sbank.netbanking.model.NewCustomer;
 
 public class CustomerDAO {
+	
+
+	
+	public NewCustomer addNewCustomer(String name, String password, String email, long mobileNumber,
+            long dobMillis, String address, long aadharNumber,
+            String panNumber, long createdBy, String role) throws TaskException {
+			
+			String insertUserSQL = "INSERT INTO users (name, password, email, mobile_number, role, created_at, modified_at, modified_by) VALUES (?, ?, ?, ?, 'CUSTOMER', ?, ?, ?)";
+			String insertCustomerSQL = "INSERT INTO customers (customer_id, dob, address, aadhar_number, pan_number) VALUES (?, ?, ?, ?, ?)";
+			long currentTime = System.currentTimeMillis();
+			
+			try (ConnectionManager connectionManager = new ConnectionManager()) {
+			connectionManager.initConnection();
+			Connection conn = connectionManager.getConnection();
+			
+			try (
+			PreparedStatement userStmt = conn.prepareStatement(insertUserSQL, Statement.RETURN_GENERATED_KEYS);
+			PreparedStatement custStmt = conn.prepareStatement(insertCustomerSQL)
+			) {
+			// Insert into users table
+			userStmt.setString(1, name);
+			userStmt.setString(2, password);
+			userStmt.setString(3, email);
+			userStmt.setLong(4, mobileNumber);
+			userStmt.setLong(5, currentTime);
+			userStmt.setLong(6, currentTime);
+			userStmt.setLong(7, createdBy);
+			
+			int row = userStmt.executeUpdate();
+			if (row == 0) {
+			throw new TaskException("Failed to insert into users table");
+			}
+			
+			ResultSet generatedKeys = userStmt.getGeneratedKeys();
+			if (!generatedKeys.next()) {
+			throw new TaskException("Failed to retrieve generated user_id");
+			}
+			long userId = generatedKeys.getLong(1);
+			
+			// Insert into customers table
+			custStmt.setLong(1, userId);
+			custStmt.setLong(2, dobMillis);
+			custStmt.setString(3, address);
+			custStmt.setLong(4, aadharNumber);
+			custStmt.setString(5, panNumber);
+			
+			int row2 = custStmt.executeUpdate();
+			if (row2 == 0) {
+			throw new TaskException("Failed to insert into customers table");
+			}
+			
+			// Prepare return object
+			NewCustomer customer = new NewCustomer();
+			customer.setCustomerId(userId);
+			customer.setName(name);
+			
+
+			customer.setEmail(email);
+			customer.setMobileNumber(mobileNumber);
+			customer.setDob(dobMillis);
+			customer.setAddress(address);
+			customer.setAadharNumber(aadharNumber);
+			customer.setPanNumber(panNumber);
+			customer.setRole("CUSTOMER");
+			customer.setCreatedAt(currentTime);
+			customer.setModifiedAt(currentTime);
+			customer.setModifiedBy(createdBy);
+			
+			
+			return customer;
+			
+			} catch (SQLException e) {
+			throw new TaskException("Failed to insert customer data", e);
+		}
+			} catch (Exception e) {
+			throw new TaskException("Database error while adding customer", e);
+	}
+	}
 
     public Customer getCustomerById(long userId) throws TaskException {
         String sql = "SELECT u.user_id, u.name, u.email, u.mobile_number, u.role, " +
@@ -153,77 +231,6 @@ public class CustomerDAO {
     }
     
     
-    public long addBeneficiary(Beneficiary beneficiary) throws TaskException {
-        String sql = "INSERT INTO beneficiery (customer_id, beneficiery_account_number, beneficiery_name, "
-                   + "beneficiery_ifsc_code, created_at, modified_at, modified_by) "
-                   + "VALUES (?, ?, ?, ?, ?, ?, ?)";
-
-        try (ConnectionManager cm = new ConnectionManager()) {
-            cm.initConnection();
-            Connection conn = cm.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-                stmt.setLong(1, beneficiary.getCustomerId());
-                stmt.setLong(2, beneficiary.getBeneficiaryAccountNumber());
-                stmt.setString(3, beneficiary.getBeneficiaryName());
-                stmt.setString(4, beneficiary.getBeneficiaryIfscCode());
-                stmt.setLong(5, beneficiary.getCreatedAt());
-                stmt.setLong(6, beneficiary.getModifiedAt());
-                stmt.setLong(7, beneficiary.getModifiedBy());
-
-                int rows = stmt.executeUpdate();
-                if (rows == 0) {
-                    throw new TaskException("Failed to insert beneficiary");
-                }
-
-                try (ResultSet rs = stmt.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        return rs.getLong(1);
-                    } else {
-                        throw new TaskException("Failed to fetch beneficiary ID");
-                    }
-                }
-
-            }
-        } catch (SQLException e) {
-            throw new TaskException("Database error while adding beneficiary", e);
-        } catch (Exception e) {
-            throw new TaskException("Unexpected error while adding beneficiary", e);
-        }
-    }
-    
-    public List<Beneficiary> getBeneficiariesByCustomerId(long customerId) throws TaskException {
-        String sql = "SELECT * FROM beneficiery WHERE customer_id = ?";
-        List<Beneficiary> list = new ArrayList<>();
-
-        try (ConnectionManager cm = new ConnectionManager()) {
-            cm.initConnection();
-            Connection conn = cm.getConnection();
-
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setLong(1, customerId);
-                ResultSet rs = stmt.executeQuery();
-
-                while (rs.next()) {
-                    Beneficiary b = new Beneficiary();
-                    b.setBeneficiaryUniqueNumber(rs.getLong("beneficiery_unique_number"));
-                    b.setCustomerId(rs.getLong("customer_id"));
-                    b.setBeneficiaryAccountNumber(rs.getLong("beneficiery_account_number"));
-                    b.setBeneficiaryName(rs.getString("beneficiery_name"));
-                    b.setBeneficiaryIfscCode(rs.getString("beneficiery_ifsc_code"));
-                    b.setCreatedAt(rs.getLong("created_at"));
-                    b.setModifiedAt(rs.getLong("modified_at"));
-                    b.setModifiedBy(rs.getLong("modified_by"));
-                    list.add(b);
-                }
-            }
-        } catch (SQLException e) {
-            throw new TaskException("Failed to fetch beneficiaries", e);
-        } catch (Exception e) {
-            throw new TaskException("Unexpected error while fetching beneficiaries", e);
-        }
-
-        return list;
-    }
 
     
 

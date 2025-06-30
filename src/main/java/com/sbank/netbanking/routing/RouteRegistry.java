@@ -36,7 +36,6 @@ public class RouteRegistry {
         // Employee
         routes.add(new Route("GET", "/employee/profile", employeeHandler::getProfile));
         routes.add(new Route("POST", "/employee/customers", employeeHandler::addCustomer));
-  //      routes.add(new Route("GET", "/employee/branches/requests", employeeHandler::getBranchRequests));
         routes.add(new Route("GET", "/employee/accounts/update", employeeHandler::editBranchAccounts));
         routes.add(new Route("GET", "/employee/transactions", employeeHandler::findTransactions));
         routes.add(new Route("GET", "/employee/users", employeeHandler::getUser));
@@ -50,7 +49,6 @@ public class RouteRegistry {
         routes.add(new Route("GET", "/admin/profile", adminHandler::getProfile));
         routes.add(new Route("GET", "/admin/branches", adminHandler::getBranchById));
         routes.add(new Route("PUT", "/admin/branches", adminHandler::updateBranch));
-     //   routes.add(new Route("GET", "/admin/branches/requests", adminHandler::getBranchRequests));
         routes.add(new Route("GET", "/admin/users", adminHandler::getUser));
         routes.add(new Route("PUT", "/admin/users/update", adminHandler::updateUser));
         routes.add(new Route("POST", "/admin/transactions/deposit", adminHandler::deposit));
@@ -60,9 +58,8 @@ public class RouteRegistry {
         routes.add(new Route("POST", "/admin/account/update", adminHandler::updateAccountStatus));
         routes.add(new Route("POST", "/admin/new-employee", adminHandler::addEmployee));
         routes.add(new Route("POST", "/admin/new-customer", adminHandler::addCustomer));
-
-        // Transactions
         routes.add(new Route("POST", "/admin/transactions/query", adminHandler::queryTransactions));
+        routes.add(new Route("POST", "/admin/branch/create", adminHandler::createBranch));
 
     }
     

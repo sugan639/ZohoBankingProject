@@ -10,10 +10,10 @@ import javax.servlet.http.HttpServletResponse;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import com.sbank.netbanking.dao.AccountDAO;
 import com.sbank.netbanking.dao.CustomerDAO;
 import com.sbank.netbanking.dao.EmployeeDAO;
 import com.sbank.netbanking.dao.TransactionDAO;
-import com.sbank.netbanking.dao.TransactionUtil;
 import com.sbank.netbanking.dao.UserDAO;
 import com.sbank.netbanking.dto.ErrorResponse;
 import com.sbank.netbanking.dto.UserDTO;
@@ -33,6 +33,7 @@ import com.sbank.netbanking.util.ErrorResponseUtil;
 import com.sbank.netbanking.util.PojoJsonConverter;
 import com.sbank.netbanking.util.RandomPasswordGenerator;
 import com.sbank.netbanking.util.RequestJsonConverter;
+import com.sbank.netbanking.util.TransactionUtil;
 import com.sbank.netbanking.util.UserMapper;
 
 public class EmployeeHandler {
@@ -89,12 +90,14 @@ public class EmployeeHandler {
         long employeeId = sessionData.getUserId();
     	
     	 UserDAO userDao = new UserDAO();
-            Role authRole = userDao.getUserById(employeeId).getRole();
+    	 User userAuth = userDao.getUserById(employeeId);
+            Role authRole = userAuth.getRole();
             if(authRole != Role.EMPLOYEE) {
             	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
                          new ErrorResponse("Unauthorized", 403, "Permission Denied"));
             	 return;
             }
+            
     	 String userIdParam = req.getParameter("user_id");
 
  	    long userId;
@@ -106,6 +109,8 @@ public class EmployeeHandler {
  	            new ErrorResponse("Bad Request", 400, "Invalid user_id format"));
  	        return;
  	    }
+ 	    
+ 	    
 
  	    UserDAO userDAO = new UserDAO(); // Assumed
  	    PojoJsonConverter converter = new PojoJsonConverter();
@@ -168,7 +173,7 @@ public class EmployeeHandler {
         
     	RequestJsonConverter jsonConverter = new RequestJsonConverter();
         PojoJsonConverter pojoConverter = new PojoJsonConverter();
-        EmployeeDAO employeeDAO = new EmployeeDAO();
+        CustomerDAO customerDAO = new CustomerDAO();
         RandomPasswordGenerator passwordGenerator = new RandomPasswordGenerator();
 
         try {
@@ -204,7 +209,7 @@ public class EmployeeHandler {
             long dobMillis = DateUtil.convertDateToEpoch(dobString);
 
             // Save to DB
-            NewCustomer customer = employeeDAO.addNewCustomer(name, hashedPassword, email, mobileNumber, dobMillis,
+            NewCustomer customer = customerDAO.addNewCustomer(name, hashedPassword, email, mobileNumber, dobMillis,
                                                         address, aadharNumber, panNumber, createdBy, role);
 
             // Convert response
@@ -239,7 +244,6 @@ public class EmployeeHandler {
             }
     	RequestJsonConverter jsonConverter = new RequestJsonConverter();
         PojoJsonConverter pojoConverter = new PojoJsonConverter();
-        EmployeeDAO employeeDAO = new EmployeeDAO();
         UserDAO userDAO = new UserDAO();
 
         try {
@@ -254,6 +258,22 @@ public class EmployeeHandler {
                     new ErrorResponse("Bad Request", 400, "user_id and branch_id are required"));
                 return;
             }
+            
+	        //Employee can perform operations on his branch only
+ 	       // Get employee branch_id
+	          EmployeeDAO employeeDAO = new EmployeeDAO();
+	          Employee employee = employeeDAO.getEmployeeById(employeeId);
+	          long employeeBranchId = employee.getBranchId();
+
+	        
+	          AccountDAO accountDAO = new AccountDAO();
+	  
+
+	          if (employeeBranchId != branchId) {
+	              ErrorResponseUtil.send(res, HttpServletResponse.SC_FORBIDDEN,
+	                      new ErrorResponse("Unauthorized", 403, "You can only create accounts for your branch"));
+	              return;
+	          }
 
             // Validate user is a customer
             User user = userDAO.getUserById(userId);
@@ -267,7 +287,7 @@ public class EmployeeHandler {
             long createdBy = sessionData.getUserId();
 
             // Create the account
-            Account account = employeeDAO.createCustomerAccount(userId, branchId, initialBalance, createdBy);
+            Account account = accountDAO.createCustomerAccount(userId, branchId, initialBalance, createdBy);
 
             // Return created account
             JSONObject jsonResponse = pojoConverter.pojoToJson(account);
@@ -320,6 +340,24 @@ public class EmployeeHandler {
  	                new ErrorResponse("Bad Request", 400, "Provide transaction_id OR reference_number OR (account_number, from_date, to_date)"));
  	            return;
  	        }
+ 	        
+	        //Employee can perform operations on his branch only
+ 	       // Get employee branch_id
+	          EmployeeDAO employeeDAO = new EmployeeDAO();
+	          Employee employee = employeeDAO.getEmployeeById(employeeId);
+	          long employeeBranchId = employee.getBranchId();
+
+	          // Get account's branch_id
+	          AccountDAO accountDAO = new AccountDAO();
+	          Account account = accountDAO.getAccountByNumber(accNum);
+	          long accountBranchId = account.getBranchId();
+	          
+
+	          if (employeeBranchId != accountBranchId) {
+	              ErrorResponseUtil.send(res, HttpServletResponse.SC_FORBIDDEN,
+	                      new ErrorResponse("Unauthorized", 403, "You can only find transactions from your branch"));
+	              return;
+	          }
 
  	        List<Transaction> txns = transactionDAO.getFilteredTransactions(
  	            txnId, refNum, accNum, from, to, type, status, limit, offset
@@ -354,6 +392,8 @@ public class EmployeeHandler {
                          new ErrorResponse("Unauthorized", 403, "Permission Denied"));
             	 return;
             }
+            
+            
     	RequestJsonConverter jsonConverter = new RequestJsonConverter();
 	    UserDAO userDAO = new UserDAO();
 	    EmployeeDAO employeeDAO = new EmployeeDAO();
@@ -477,6 +517,24 @@ public class EmployeeHandler {
 	            return;
 	        }
 
+	        //Employee can perform operations on his branch only
+ 	       // Get employee branch_id
+	          EmployeeDAO employeeDAO = new EmployeeDAO();
+	          Employee employee = employeeDAO.getEmployeeById(employeeId);
+	          long employeeBranchId = employee.getBranchId();
+
+	          // Get account's branch_id
+	          AccountDAO accountDAO = new AccountDAO();
+	          Account account = accountDAO.getAccountByNumber(accountNumber);
+	          long accountBranchId = account.getBranchId();
+	          
+
+	          if (employeeBranchId != accountBranchId) {
+	              ErrorResponseUtil.send(res, HttpServletResponse.SC_FORBIDDEN,
+	                      new ErrorResponse("Unauthorized", 403, "You can only deposit to accounts created in your branch"));
+	              return;
+	          }
+	          
 	        // Get session data to track who performed the deposit
 	        long doneBy = sessionData.getUserId();
 
@@ -539,19 +597,36 @@ public class EmployeeHandler {
  	                new ErrorResponse("Bad Request", 400, "account_number and valid amount are required"));
  	            return;
  	        }
+ 	        
+ 	        //Employee can perform operations on his branch only
+ 	       // Get employee branch_id
+	          EmployeeDAO employeeDAO = new EmployeeDAO();
+	          Employee employee = employeeDAO.getEmployeeById(employeeId);
+	          long employeeBranchId = employee.getBranchId();
+
+	          // Get account's branch_id
+	          AccountDAO accountDAO = new AccountDAO();
+	          Account account = accountDAO.getAccountByNumber(accountNumber);
+	          long accountBranchId = account.getBranchId();
+	          
+
+	          if (employeeBranchId != accountBranchId) {
+	              ErrorResponseUtil.send(res, HttpServletResponse.SC_FORBIDDEN,
+	                      new ErrorResponse("Unauthorized", 403, "You can only withdraw from accounts created from your branch"));
+	              return;
+	          }
+
 
  	        // Get session data to track who performed the withdrawal
  	        long doneBy = sessionData.getUserId();
 
  	        TransactionType transactionType = TransactionType.WITHDRAWAL;
  	        
- 	        @SuppressWarnings("null")
- 			long toAccount = (Long) null;
  	       
  	        // Perform withdrawal and return transaction info
  	        TransactionUtil transactionUtil = new TransactionUtil();
              long transactionId = transactionUtil.generateTransactionId();
- 	        Transaction transaction = transactionDAO.withdraw(accountNumber, amount, doneBy, transactionType, transactionId, toAccount, null);
+			Transaction transaction = transactionDAO.withdraw(accountNumber, amount, doneBy, transactionType, transactionId, null, null);
 
  	        JSONObject jsonResp = pojoConverter.pojoToJson(transaction);
  	        
@@ -598,12 +673,32 @@ public class EmployeeHandler {
  	        String transferType = json.optString("type", null);  // Expected: "INTRA_BANK" or "INTER_BANK"
  	        String ifscCode = json.optString("ifsc_code", null);  // optional
 
+ 	        
  	        if (fromAccount == null || toAccount == null || amount == null || amount <= 0 || transferType == null) {
  	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
  	                new ErrorResponse("Bad Request", 400, "Missing or invalid parameters"));
  	            return;
  	        }
 
+ 	       // Get employee branch_id
+ 	          EmployeeDAO employeeDAO = new EmployeeDAO();
+ 	          Employee employee = employeeDAO.getEmployeeById(employeeId);
+ 	          long employeeBranchId = employee.getBranchId();
+
+ 	          // Get account's branch_id
+ 	          AccountDAO accountDAO = new AccountDAO();
+ 	          Account account = accountDAO.getAccountByNumber(fromAccount);
+ 	          long accountBranchId = account.getBranchId();
+ 	          
+
+ 	          if (employeeBranchId != accountBranchId) {
+ 	              ErrorResponseUtil.send(res, HttpServletResponse.SC_FORBIDDEN,
+ 	                      new ErrorResponse("Unauthorized", 403, "You can only trasfer money from accounts created in your branch"));
+ 	              return;
+ 	          }
+
+ 	        
+ 	        
  	        long doneBy = sessionData.getUserId();
  	        long transactionId = transactionUtil.generateTransactionId(); // shared for both rows if intra-bank
 
@@ -655,7 +750,7 @@ public class EmployeeHandler {
           	 return;
           }
 	  RequestJsonConverter jsonConverter = new RequestJsonConverter();
-	  EmployeeDAO employeeDAO = new EmployeeDAO();
+	  AccountDAO accountDAO = new AccountDAO();
 
       try {
           JSONObject json = jsonConverter.convertToJson(req);
@@ -669,18 +764,32 @@ public class EmployeeHandler {
               return;
           }
 
-          // Get modifier (employee) from session
-          long modifiedBy = sessionData.getUserId();
+          
+          // Get employee branch_id
+          EmployeeDAO employeeDAO = new EmployeeDAO();
+          Employee employee = employeeDAO.getEmployeeById(employeeId);
+          long employeeBranchId = employee.getBranchId();
+
+          // Get account's branch_id
+          Account account = accountDAO.getAccountByNumber(accountNumber);
+          long accountBranchId = account.getBranchId();
+          
+
+          if (employeeBranchId != accountBranchId) {
+              ErrorResponseUtil.send(res, HttpServletResponse.SC_FORBIDDEN,
+                      new ErrorResponse("Unauthorized", 403, "You can only update accounts from your branch"));
+              return;
+          }
 
           switch (operation) {
               case "ACTIVATE":
-                  employeeDAO.changeAccountStatus(accountNumber, "ACTIVE", modifiedBy);
+            	  accountDAO.changeAccountStatus(accountNumber, "ACTIVE", employeeId);
                   break;
               case "INACTIVATE":
-                  employeeDAO.changeAccountStatus(accountNumber, "INACTIVE", modifiedBy);
+            	  accountDAO.changeAccountStatus(accountNumber, "INACTIVE", employeeId);
                   break;
               case "DELETE":
-                  employeeDAO.deleteAccount(accountNumber);
+            	  accountDAO.deleteAccount(accountNumber);
                   break;
               default:
                   ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
@@ -699,6 +808,39 @@ public class EmployeeHandler {
                   new ErrorResponse("Server Error", 500, e.getMessage()));
       }
   }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   
   
   
