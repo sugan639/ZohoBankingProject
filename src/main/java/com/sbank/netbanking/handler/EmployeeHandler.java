@@ -370,7 +370,7 @@ public class EmployeeHandler {
 
 
     // PUT /employee/users/{user_id}
-    public void updateUser(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    public void updateCustomer(HttpServletRequest req, HttpServletResponse res) throws TaskException {
     	//Authorization 
 	    SessionData sessionData =  new SessionData();
 	    sessionData = (SessionData) req.getAttribute("sessionData");

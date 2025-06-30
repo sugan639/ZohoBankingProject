@@ -40,7 +40,7 @@ public class RouteRegistry {
         routes.add(new Route("POST", "/employee/accounts/update", employeeHandler::editBranchAccounts));
         routes.add(new Route("GET", "/employee/transactions/query", employeeHandler::getTransactions));
         routes.add(new Route("GET", "/employee/users", employeeHandler::getUser));
-        routes.add(new Route("PUT", "/employee/users", employeeHandler::updateUser));
+        routes.add(new Route("PUT", "/employee/users", employeeHandler::updateCustomer));
         routes.add(new Route("POST", "/employee/transactions/deposit", employeeHandler::deposit));
         routes.add(new Route("POST", "/employee/transactions/withdraw", employeeHandler::withdraw));
         routes.add(new Route("POST", "/employee/transactions/transfer", employeeHandler::transfer));

@@ -233,9 +233,8 @@ public class TransactionDAO {
 	    }
 	}
 	
-	
 	public List<Transaction> getFilteredTransactions(
-	        Long txnId, Long refNum, Long accNum,Long customerId, Long from, Long to,
+	        Long txnId, Long refNum, Long accNum, Long customerId, Long from, Long to,
 	        String type, String status, int limit, int offset) throws TaskException {
 
 	    List<Transaction> result = new ArrayList<>();
@@ -248,11 +247,16 @@ public class TransactionDAO {
 	    } else if (refNum != null) {
 	        sql.append("AND transaction_reference_number = ? ");
 	        params.add(refNum);
-	    } else if(accNum != null){
+	    } else if (accNum != null) {
+	        if (from == null || to == null) {
+	            throw new TaskException("From and To date must be provided when filtering by account number");
+	        }
+
 	        sql.append("AND account_number = ? AND timestamp BETWEEN ? AND ? ");
 	        params.add(accNum);
 	        params.add(from);
 	        params.add(to);
+
 	        if (type != null) {
 	            sql.append("AND type = ? ");
 	            params.add(type);
@@ -261,12 +265,17 @@ public class TransactionDAO {
 	            sql.append("AND status = ? ");
 	            params.add(status);
 	        }
-	    }
-	    else if(customerId != null){
+	        // No GROUP BY here, not needed for single account query
+	    } else if (customerId != null) {
+	        if (from == null || to == null) {
+	            throw new TaskException("From and To date must be provided when filtering by customer ID");
+	        }
+
 	        sql.append("AND user_id = ? AND timestamp BETWEEN ? AND ? ");
 	        params.add(customerId);
 	        params.add(from);
 	        params.add(to);
+
 	        if (type != null) {
 	            sql.append("AND type = ? ");
 	            params.add(type);
@@ -275,11 +284,16 @@ public class TransactionDAO {
 	            sql.append("AND status = ? ");
 	            params.add(status);
 	        }
+
 	    }
 
-	    sql.append("ORDER BY timestamp DESC LIMIT ? OFFSET ?");
+
+	    // For sorting the transactions by account number
+	    sql.append("ORDER BY account_number, timestamp DESC ");
+	    sql.append("LIMIT ? OFFSET ? ");
 	    params.add(limit);
 	    params.add(offset);
+
 
 	    try (ConnectionManager cm = new ConnectionManager()) {
 	        cm.initConnection();
@@ -306,13 +320,11 @@ public class TransactionDAO {
 	                try {
 	                    t.setBeneficiaryAccountNumber(rs.getLong("beneficiery_account_number"));
 	                } catch (Exception ignore) {
-	                	
 	                }
 
 	                try {
 	                    t.setIfscCode(rs.getString("ifsc_code"));
 	                } catch (Exception ignore) {
-	                	
 	                }
 
 	                result.add(t);
@@ -326,6 +338,7 @@ public class TransactionDAO {
 
 	    return result;
 	}
+
 	
 	public List<Transaction> getTransactionsByUserAndDateRange(long userId, long fromTimestamp, long toTimestamp)
 	        throws TaskException {

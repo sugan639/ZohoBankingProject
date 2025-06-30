@@ -481,13 +481,10 @@ public class AdminHandler {
 
 	        TransactionType transactionType = TransactionType.WITHDRAWAL;
 	        
-	        @SuppressWarnings("null")
-			long toAccount = (Long) null;
-	       
 	        // Perform withdrawal and return transaction info
 	        TransactionUtil transactionUtil = new TransactionUtil();
             long transactionId = transactionUtil.generateTransactionId();
-	        Transaction transaction = transactionDAO.withdraw(accountNumber, amount, doneBy, transactionType, transactionId, toAccount, null);
+	        Transaction transaction = transactionDAO.withdraw(accountNumber, amount, doneBy, transactionType, transactionId, null, null);
 
 	        JSONObject jsonResp = pojoConverter.pojoToJson(transaction);
 	        
