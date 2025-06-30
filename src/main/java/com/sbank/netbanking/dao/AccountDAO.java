@@ -198,7 +198,52 @@ public class AccountDAO {
 	        throw new TaskException(ExceptionMessages.DATABASE_CONNECTION_FAILED, e);
 	    }
 	}
+	
+	public List<Account> getAccountsByCustomerAndBranch(long customerId, long branchId) throws TaskException {
+	    List<Account> accountList = new ArrayList<>();
+	    String sql = "SELECT * FROM accounts WHERE user_id = ? AND branch_id = ?";
 
+	    try (ConnectionManager cm = new ConnectionManager()) {
+	        cm.initConnection();
+	        Connection conn = cm.getConnection();
 
+	        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+	            stmt.setLong(1, customerId);
+	            stmt.setLong(2, branchId);
 
+	            ResultSet rs = stmt.executeQuery();
+	            while (rs.next()) {
+	            	  Account acc = new Account();
+	                    acc.setAccountNumber(rs.getLong("account_number"));
+	                    acc.setUserId(rs.getLong("user_id"));
+	                    acc.setBalance(rs.getDouble("balance"));
+	                    acc.setBranchId(rs.getLong("branch_id"));
+	                    acc.setStatus(AccountStatus.valueOf(rs.getString("status")));
+	                    acc.setCreatedAt(rs.getLong("created_at"));
+	                    acc.setModifiedAt(rs.getLong("modified_at"));
+	                    acc.setModifiedBy(rs.getLong("modified_by"));
+	                    accountList.add(acc);
+	            }
+	        }
+	    } catch (SQLException e) {
+	        throw new TaskException("Failed to fetch accounts for given customerId and branchId", e);
+	    } catch (Exception e) {
+	        throw new TaskException(ExceptionMessages.DATABASE_CONNECTION_FAILED, e);
+	    }
+
+	    return accountList;
+	}
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 }
+

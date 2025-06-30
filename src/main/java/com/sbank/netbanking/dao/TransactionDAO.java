@@ -235,7 +235,7 @@ public class TransactionDAO {
 	
 	
 	public List<Transaction> getFilteredTransactions(
-	        Long txnId, Long refNum, Long accNum, Long from, Long to,
+	        Long txnId, Long refNum, Long accNum,Long customerId, Long from, Long to,
 	        String type, String status, int limit, int offset) throws TaskException {
 
 	    List<Transaction> result = new ArrayList<>();
@@ -248,9 +248,23 @@ public class TransactionDAO {
 	    } else if (refNum != null) {
 	        sql.append("AND transaction_reference_number = ? ");
 	        params.add(refNum);
-	    } else {
+	    } else if(accNum != null){
 	        sql.append("AND account_number = ? AND timestamp BETWEEN ? AND ? ");
 	        params.add(accNum);
+	        params.add(from);
+	        params.add(to);
+	        if (type != null) {
+	            sql.append("AND type = ? ");
+	            params.add(type);
+	        }
+	        if (status != null) {
+	            sql.append("AND status = ? ");
+	            params.add(status);
+	        }
+	    }
+	    else if(customerId != null){
+	        sql.append("AND user_id = ? AND timestamp BETWEEN ? AND ? ");
+	        params.add(customerId);
 	        params.add(from);
 	        params.add(to);
 	        if (type != null) {
@@ -312,6 +326,58 @@ public class TransactionDAO {
 
 	    return result;
 	}
+	
+	public List<Transaction> getTransactionsByUserAndDateRange(long userId, long fromTimestamp, long toTimestamp)
+	        throws TaskException {
+
+	    List<Transaction> transactions = new ArrayList<>();
+	    String sql = "SELECT * FROM transactions WHERE done_by = ? AND timestamp BETWEEN ? AND ? ORDER BY timestamp DESC";
+
+	    try (ConnectionManager cm = new ConnectionManager()) {
+	        cm.initConnection();
+	        Connection conn = cm.getConnection();
+
+	        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+	            stmt.setLong(1, userId);
+	            stmt.setLong(2, fromTimestamp);
+	            stmt.setLong(3, toTimestamp);
+
+	            ResultSet rs = stmt.executeQuery();
+
+	            while (rs.next()) {
+	                Transaction txn = new Transaction();
+	                txn.setTransactionReferenceNumber(rs.getLong("transaction_reference_number"));
+	                txn.setTransactionId(rs.getLong("transaction_id"));
+	                txn.setAccountNumber(rs.getLong("account_number"));
+	                txn.setAmount(rs.getDouble("amount"));
+	                txn.setType(Transaction.TransactionType.valueOf(rs.getString("type")));
+	                txn.setStatus(Transaction.TransactionStatus.valueOf(rs.getString("status")));
+	                txn.setTimestamp(rs.getLong("timestamp"));
+	                txn.setDoneBy(rs.getLong("done_by"));
+	                txn.setClosingBalance(rs.getDouble("closing_balance"));
+	                txn.setUserId(rs.getLong("user_id"));
+
+	                try {
+	                    txn.setBeneficiaryAccountNumber(rs.getLong("beneficiery_account_number"));
+	                } catch (Exception ignore) {}
+
+	                try {
+	                    txn.setIfscCode(rs.getString("ifsc_code"));
+	                } catch (Exception ignore) {}
+
+	                transactions.add(txn);
+	            }
+
+	        }
+	    } catch (SQLException e) {
+	        throw new TaskException("Failed to fetch transactions by user and date range", e);
+	    } catch (Exception e) {
+	        throw new TaskException(ExceptionMessages.DATABASE_CONNECTION_FAILED, e);
+	    }
+
+	    return transactions;
+	}
+
 
 
 

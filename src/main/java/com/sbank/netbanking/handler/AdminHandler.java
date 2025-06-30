@@ -2,6 +2,7 @@ package com.sbank.netbanking.handler;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
@@ -606,8 +607,9 @@ public class AdminHandler {
 	            	 return;
 	            }
 	            
+	        // Getting request body parameters
 	        JSONObject json = converter.convertToJson(req);
-
+	        Long customerId = json.has("customer_id") ? json.getLong("customer_id") : null;
 	        Long txnId = json.has("transaction_id") ? json.getLong("transaction_id") : null;
 	        Long refNum = json.has("transaction_reference_number") ? json.getLong("transaction_reference_number") : null;
 	        Long accNum = json.has("account_number") ? json.getLong("account_number") : null;
@@ -619,14 +621,20 @@ public class AdminHandler {
 	        int offset = json.has("offset") ? json.getInt("offset") : 0;
 
 	        // Validation
-	        if ((txnId == null && refNum == null) && (accNum == null || from == null || to == null)) {
+	        boolean hasTxnId = txnId != null;
+	        boolean hasRefNum = refNum != null;
+	        boolean hasAccountFilter = accNum != null && from != null && to != null;
+	        boolean hasCustomerFilter = customerId != null && from != null && to != null;
+
+	        if (!(hasTxnId || hasRefNum || hasAccountFilter || hasCustomerFilter)) {
 	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-	                new ErrorResponse("Bad Request", 400, "Provide transaction_id OR reference_number OR (account_number, from_date, to_date)"));
+	                new ErrorResponse("Bad Request", 400, "Provide transaction_id OR reference_number OR (account_number or customer_id) with from_date and to_date"));
 	            return;
 	        }
 
+
 	        List<Transaction> txns = transactionDAO.getFilteredTransactions(
-	            txnId, refNum, accNum, from, to, type, status, limit, offset
+	            txnId, refNum, accNum,customerId, from, to, type, status, limit, offset
 	        );
 
 	        JSONArray jsonArr = pojoConverter.pojoListToJsonArray(txns);
@@ -647,13 +655,6 @@ public class AdminHandler {
     
     
    
-    
-    
-    
-    
-    
-    
-    
     
     
     
@@ -939,6 +940,18 @@ public class AdminHandler {
         BranchDAO branchDAO = new BranchDAO();
 
         try {
+        	//Authorization 
+		    SessionData sessionData =  new SessionData();
+		    sessionData = (SessionData) req.getAttribute("sessionData");
+	        long adminId = sessionData.getUserId();
+	    	
+	    	 UserDAO userDao = new UserDAO();
+	            Role authRole = userDao.getUserById(adminId).getRole();
+	            if(authRole != Role.ADMIN) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
             JSONObject json = jsonConverter.convertToJson(req);
 
             String newAdminIdString = json.optString("new_admin_id");
@@ -951,12 +964,7 @@ public class AdminHandler {
                         new ErrorResponse("Bad Request", 400, "bank_name and location are required"));
                 return;
             }
-            
-            
 
-            // Get admin user ID from session
-            SessionData sessionData = (SessionData) req.getAttribute("sessionData");
-            long adminId = sessionData.getUserId();
 
             // Generate IFSC code if not provided
             if (ifscCode == null || ifscCode.isEmpty()) {
@@ -987,6 +995,67 @@ public class AdminHandler {
                     new ErrorResponse("Error", 500, e.getMessage()));
         }
     }
+    
+ // GET /admin/accounts
+    public void getAccountDetails(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+        AccountDAO accountDAO = new AccountDAO();
+        PojoJsonConverter converter = new PojoJsonConverter();
+
+        try {
+        	//Authorization 
+		    SessionData sessionData =  new SessionData();
+		    sessionData = (SessionData) req.getAttribute("sessionData");
+	        long adminId = sessionData.getUserId();
+	    	
+	    	 UserDAO userDao = new UserDAO();
+	            Role authRole = userDao.getUserById(adminId).getRole();
+	            if(authRole != Role.ADMIN) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
+            String accountNumParam = req.getParameter("account_number");
+            String customerIdParam = req.getParameter("customer_id");
+
+            List<Account> accounts = new ArrayList<>();
+
+            if (accountNumParam != null) {
+                // Fetch by account_number
+                long accountNumber = Long.parseLong(accountNumParam);
+                Account acc = accountDAO.getAccountByNumber(accountNumber);
+                if (acc != null) {
+                    accounts.add(acc);
+                }
+            } else if (customerIdParam != null) {
+                // Fetch all accounts by customer_id
+                long customerId = Long.parseLong(customerIdParam);
+                accounts = accountDAO.getAccountsByUserId(customerId);
+            } else {
+                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+                        new ErrorResponse("Bad Request", 400, "Provide either account_number or customer_id"));
+                return;
+            }
+
+            JSONArray jsonArray = new JSONArray();
+            for (Account acc : accounts) {
+                jsonArray.put(converter.pojoToJson(acc));
+            }
+
+            JSONObject response = new JSONObject();
+            response.put("accounts", jsonArray);
+
+            res.setContentType("application/json");
+            res.getWriter().write(response.toString());
+
+        } catch (NumberFormatException e) {
+            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+                    new ErrorResponse("Bad Request", 400, "Invalid number format"));
+        } catch (IOException e) {
+            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    new ErrorResponse("Error", 500, e.getMessage()));
+        }
+    }
+
 
    
 

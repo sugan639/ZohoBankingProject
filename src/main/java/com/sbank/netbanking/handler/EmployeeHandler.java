@@ -2,6 +2,7 @@ package com.sbank.netbanking.handler;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
@@ -304,7 +305,7 @@ public class EmployeeHandler {
 
 
     // GET /employee/transactions
-    public void findTransactions(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    public void getTransactions(HttpServletRequest req, HttpServletResponse res) throws TaskException {
     	//Authorization 
 	    SessionData sessionData =  new SessionData();
 	    sessionData = (SessionData) req.getAttribute("sessionData");
@@ -324,6 +325,7 @@ public class EmployeeHandler {
  	    try {
  	        JSONObject json = converter.convertToJson(req);
 
+ 	        Long customerId = json.has("customer_id") ? json.getLong("customer_id") : null;
  	        Long txnId = json.has("transaction_id") ? json.getLong("transaction_id") : null;
  	        Long refNum = json.has("transaction_reference_number") ? json.getLong("transaction_reference_number") : null;
  	        Long accNum = json.has("account_number") ? json.getLong("account_number") : null;
@@ -334,34 +336,23 @@ public class EmployeeHandler {
  	        int limit = json.has("limit") ? json.getInt("limit") : 100;
  	        int offset = json.has("offset") ? json.getInt("offset") : 0;
 
- 	        // Validation
- 	        if ((txnId == null && refNum == null) && (accNum == null || from == null || to == null)) {
- 	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
- 	                new ErrorResponse("Bad Request", 400, "Provide transaction_id OR reference_number OR (account_number, from_date, to_date)"));
- 	            return;
- 	        }
- 	        
-	        //Employee can perform operations on his branch only
- 	       // Get employee branch_id
-	          EmployeeDAO employeeDAO = new EmployeeDAO();
-	          Employee employee = employeeDAO.getEmployeeById(employeeId);
-	          long employeeBranchId = employee.getBranchId();
+ 	       // Validation
+ 	       boolean hasTxnId = txnId != null;
+ 	      boolean hasRefNum = refNum != null;
+ 	      boolean hasAccountFilter = accNum != null && from != null && to != null;
+ 	      boolean hasCustomerFilter = customerId != null && from != null && to != null;
 
-	          // Get account's branch_id
-	          AccountDAO accountDAO = new AccountDAO();
-	          Account account = accountDAO.getAccountByNumber(accNum);
-	          long accountBranchId = account.getBranchId();
-	          
+ 	      if (!(hasTxnId || hasRefNum || hasAccountFilter || hasCustomerFilter)) {
+ 	          ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+ 	              new ErrorResponse("Bad Request", 400, "Provide transaction_id OR reference_number OR (account_number or customer_id) with from_date and to_date"));
+ 	          return;
+ 	      }
 
-	          if (employeeBranchId != accountBranchId) {
-	              ErrorResponseUtil.send(res, HttpServletResponse.SC_FORBIDDEN,
-	                      new ErrorResponse("Unauthorized", 403, "You can only find transactions from your branch"));
-	              return;
-	          }
 
- 	        List<Transaction> txns = transactionDAO.getFilteredTransactions(
- 	            txnId, refNum, accNum, from, to, type, status, limit, offset
- 	        );
+ 	
+		        List<Transaction> txns = transactionDAO.getFilteredTransactions(
+		            txnId, refNum, accNum,customerId, from, to, type, status, limit, offset
+		        );
 
  	        JSONArray jsonArr = pojoConverter.pojoListToJsonArray(txns);
  	        JSONObject result = new JSONObject();
@@ -396,7 +387,6 @@ public class EmployeeHandler {
             
     	RequestJsonConverter jsonConverter = new RequestJsonConverter();
 	    UserDAO userDAO = new UserDAO();
-	    EmployeeDAO employeeDAO = new EmployeeDAO();
 	    CustomerDAO customerDAO = new CustomerDAO();
 
 	    try {
@@ -416,6 +406,8 @@ public class EmployeeHandler {
 	                new ErrorResponse("Bad Request", 400, "user_id is required"));
 	            return;
 	        }
+	        
+	        
 
 	        long modifiedBy = sessionData.getUserId();
 
@@ -428,6 +420,12 @@ public class EmployeeHandler {
 	        }
 
 	        String role = user.getRole().name();
+	        
+	        if(role!=Role.CUSTOMER.name()) {
+	        	   ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+		                    new ErrorResponse("Bad Request", 400, "Employee can only update customer data!"));
+		                return;
+	        }
 
 	        // Common fields
 	        String name = json.optString("name", null);
@@ -455,23 +453,7 @@ public class EmployeeHandler {
 
 	            customerDAO.updateCustomerFields(userId, dob, address, aadhar, pan);
 
-	        } else if (role.equals("EMPLOYEE") ) {
-	            // Validate that no customer-specific fields are present
-	            if (json.has("dob") || json.has("address") || json.has("aadhar_number") || json.has("pan_number")) {
-	                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-	                    new ErrorResponse("Bad Request", 400, "Employees/Admins should not have customer-specific fields like dob, address, etc."));
-	                return;
-	            }
-
-	            Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
-	            employeeDAO.updateEmployeeFields(userId, branchId);
-	        }
-	        
-	        else if(role.equals("ADMIN")) {
-	        	ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-	                    new ErrorResponse("Unauthorized", 401, "Employees should not update admin data!"));
-	                return;
-	        }
+	        } 
 	        
 	        
 
@@ -812,6 +794,131 @@ public class EmployeeHandler {
   
   
   
+  public void updateProfile(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+	  
+		//Authorization 
+	    SessionData sessionData =  new SessionData();
+	    sessionData = (SessionData) req.getAttribute("sessionData");
+	    long employeeId = sessionData.getUserId();
+	
+	 UserDAO userDao = new UserDAO();
+        Role authRole = userDao.getUserById(employeeId).getRole();
+        if(authRole != Role.EMPLOYEE) {
+        	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+                     new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+        	 return;
+        }
+      RequestJsonConverter jsonConverter = new RequestJsonConverter();
+      UserDAO userDAO = new UserDAO();
+
+      try {
+          JSONObject json = jsonConverter.convertToJson(req);
+
+          // Get session info
+          long userId = sessionData.getUserId();
+
+          // Extract editable fields
+          String name = json.optString("name", null);
+          String email = json.optString("email", null);
+          Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
+          
+
+          // Update users table
+          userDAO.updateUserFields(userId, name, email, mobileNumber, userId);
+
+
+          JSONObject response = new JSONObject();
+          response.put("message", "Profile updated successfully");
+          res.setContentType("application/json");
+          res.getWriter().write(response.toString());
+
+      } catch (IOException e) {
+          e.printStackTrace();
+          ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+              new ErrorResponse("TaskException", 500, e.getMessage()));
+      }
+  }
+  
+  
+  // Get account data by customer id or account number
+  public void getAccountDetails(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+      AccountDAO accountDAO = new AccountDAO();
+      PojoJsonConverter converter = new PojoJsonConverter();
+
+      try {
+      	//Authorization 
+		    SessionData sessionData =  new SessionData();
+		    sessionData = (SessionData) req.getAttribute("sessionData");
+	        long employeeId = sessionData.getUserId();
+	    	
+	    	 UserDAO userDao = new UserDAO();
+	            Role authRole = userDao.getUserById(employeeId).getRole();
+	            if(authRole != Role.EMPLOYEE) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
+	            
+	            
+          String accountNumParam = req.getParameter("account_number");
+          String customerIdParam = req.getParameter("customer_id");
+          
+          // Get employee branch_id
+          EmployeeDAO employeeDAO = new EmployeeDAO();
+          Employee employee = employeeDAO.getEmployeeById(employeeId);
+          long employeeBranchId = employee.getBranchId();
+
+          // Get account's branch_id
+          long accountNumber = Long.parseLong(accountNumParam);
+
+          Account account = accountDAO.getAccountByNumber(accountNumber);
+          long accountBranchId = account.getBranchId();
+         if (employeeBranchId != accountBranchId) {
+              ErrorResponseUtil.send(res, HttpServletResponse.SC_FORBIDDEN,
+                      new ErrorResponse("Unauthorized", 403, "You can only update accounts from your branch"));
+              return;
+          }
+
+          List<Account> accounts = new ArrayList<>();
+
+          if (accountNumParam != null) {
+              // Fetch by account_number
+              Account acc = accountDAO.getAccountByNumber(accountNumber);
+              if (acc != null) {
+                  accounts.add(acc);
+              }
+          } else if (customerIdParam != null) {
+              // Fetch all accounts by customer_id
+              long customerId = Long.parseLong(customerIdParam);
+              accounts = accountDAO.getAccountsByCustomerAndBranch(customerId, employeeBranchId);
+          } else {
+              ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+                      new ErrorResponse("Bad Request", 400, "Provide either account_number or customer_id"));
+              return;
+          }
+
+          JSONArray jsonArray = new JSONArray();
+          for (Account acc : accounts) {
+              jsonArray.put(converter.pojoToJson(acc));
+          }
+
+          JSONObject response = new JSONObject();
+          response.put("accounts", jsonArray);
+
+          res.setContentType("application/json");
+          res.getWriter().write(response.toString());
+
+      } catch (NumberFormatException e) {
+          ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+                  new ErrorResponse("Bad Request", 400, "Invalid number format"));
+      } catch (IOException e) {
+          ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                  new ErrorResponse("Error", 500, e.getMessage()));
+      }
+  }
+
+
+ 
   
   
   

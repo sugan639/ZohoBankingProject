@@ -204,75 +204,58 @@ public class CustomerHandler {
                 new ErrorResponse("Internal Error", 500, e.getMessage()));
         }
     }
-
+ // GET /customer/transactions
     public void getTransaction(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-        RequestJsonConverter jsonConverter = new RequestJsonConverter();
+        // Authorization
+        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
+        long customerId = sessionData.getUserId();
+
+        RequestJsonConverter converter = new RequestJsonConverter();
         PojoJsonConverter pojoConverter = new PojoJsonConverter();
         TransactionDAO transactionDAO = new TransactionDAO();
         AccountDAO accountDAO = new AccountDAO();
 
         try {
-            JSONObject json = jsonConverter.convertToJson(req);
+            JSONObject json = converter.convertToJson(req);
 
-            Long transactionId = json.has("transaction_id") ? json.getLong("transaction_id") : null;
-            Long referenceNumber = json.has("reference_number") ? json.getLong("reference_number") : null;
-            Long accountNumber = json.has("account_number") ? json.getLong("account_number") : null;
+            Long txnId = json.has("transaction_id") ? json.getLong("transaction_id") : null;
+            Long refNum = json.has("transaction_reference_number") ? json.getLong("transaction_reference_number") : null;
+            Long accNum = json.has("account_number") ? json.getLong("account_number") : null;
             Long from = json.has("from_date") ? json.getLong("from_date") : null;
             Long to = json.has("to_date") ? json.getLong("to_date") : null;
+            String type = json.optString("type", null);
+            String status = json.optString("status", null);
+            int limit = json.has("limit") ? json.getInt("limit") : 100;
+            int offset = json.has("offset") ? json.getInt("offset") : 0;
 
-            SessionData sessionData = (SessionData) req.getAttribute("sessionData");
-            long userId = sessionData.getUserId();
+            // Validation
+            boolean hasTxnId = txnId != null;
+            boolean hasRefNum = refNum != null;
+            boolean hasAccountFilter = accNum != null && from != null && to != null;
+            boolean hasCustomerFilter = from != null && to != null;
 
-            // Case 1: Get by transaction ID or reference number (single record)
-            if (transactionId != null || referenceNumber != null) {
-                List<Transaction> transactions = transactionDAO.getFilteredTransactions(
-                        transactionId, referenceNumber, null, null, null, null, null, 1, 0);
-
-                if (transactions.isEmpty()) {
-                    res.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                    res.getWriter().write("{\"message\":\"Transaction not found\"}");
-                    return;
-                }
-
-                Transaction txn = transactions.get(0);
-                // Only allow access if transaction belongs to the user
-                Account acc = accountDAO.getAccountByNumber(txn.getAccountNumber());
-
-                if (acc == null || acc.getUserId() != userId) {
-                    ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-                            new ErrorResponse("Unauthorized", 403, "You do not have access to this transaction"));
-                    return;
-                }
-
-                JSONObject jsonResp = pojoConverter.pojoToJson(txn);
-                res.setContentType("application/json");
-                res.getWriter().write(jsonResp.toString());
-                return;
-            }
-
-            // Case 2: Get history for account number with date range
-            if (accountNumber == null || from == null || to == null) {
+            if (!(hasTxnId || hasRefNum || hasAccountFilter || hasCustomerFilter)) {
                 ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                        new ErrorResponse("Bad Request", 400, "account_number, from_date and to_date are required"));
+                    new ErrorResponse("Bad Request", 400, "Provide transaction_id OR reference_number OR (account_number or just date range)"));
                 return;
             }
 
-            // Check if the account belongs to the user
-            Account acc = accountDAO.getAccountByNumber(accountNumber);
-            if (acc == null || acc.getUserId() != userId) {
-                ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-                        new ErrorResponse("Unauthorized", 403, "You do not own this account"));
-                return;
+            // Account ownership check if accNum is provided
+            if (accNum != null) {
+                Account acc = accountDAO.getAccountByNumber(accNum);
+                if (acc == null || acc.getUserId() != customerId) {
+                    ErrorResponseUtil.send(res, HttpServletResponse.SC_FORBIDDEN,
+                        new ErrorResponse("Forbidden", 403, "You do not own this account"));
+                    return;
+                }
             }
 
-            List<Transaction> transactions = transactionDAO.getFilteredTransactions(
-                    null, null, accountNumber, from, to, null, null, 100, 0);
+            // Fetch transactions only scoped to the customer
+            List<Transaction> txns = transactionDAO.getFilteredTransactions(
+                txnId, refNum, accNum, customerId, from, to, type, status, limit, offset
+            );
 
-            JSONArray jsonArr = new JSONArray();
-            for (Transaction txn : transactions) {
-                jsonArr.put(pojoConverter.pojoToJson(txn));
-            }
-
+            JSONArray jsonArr = pojoConverter.pojoListToJsonArray(txns);
             JSONObject result = new JSONObject();
             result.put("transactions", jsonArr);
 
@@ -282,11 +265,7 @@ public class CustomerHandler {
         } catch (IOException e) {
             e.printStackTrace();
             ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    new ErrorResponse("TaskException", 500, e.getMessage()));
-        } catch (Exception e) {
-            e.printStackTrace();
-            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    new ErrorResponse("Internal Error", 500, e.getMessage()));
+                new ErrorResponse("Server Error", 500, "Could not fetch transactions"));
         }
     }
 
