@@ -233,111 +233,76 @@ public class TransactionDAO {
 	    }
 	}
 	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	public List<Transaction> getFilteredTransactions(
-	        Long txnId, Long refNum, Long accNum, Long customerId, Long from, Long to,
-	        String type, String status, int limit, int offset) throws TaskException {
+	        Long txnId, Long refNum, Long accNum, Long customerId,
+	        Long from, Long to, String type, String status,
+	        int limit, int offset) throws TaskException {
 
-	    List<Transaction> result = new ArrayList<>();
-	    StringBuilder sql = new StringBuilder("SELECT * FROM transactions WHERE 1=1 ");
-	    List<Object> params = new ArrayList<>();
-
-	    if (txnId != null) {
-	        sql.append("AND transaction_id = ? ");
-	        params.add(txnId);
-	    } else if (refNum != null) {
-	        sql.append("AND transaction_reference_number = ? ");
-	        params.add(refNum);
-	    } else if (accNum != null) {
-	        if (from == null || to == null) {
-	            throw new TaskException("From and To date must be provided when filtering by account number");
-	        }
-
-	        sql.append("AND account_number = ? AND timestamp BETWEEN ? AND ? ");
-	        params.add(accNum);
-	        params.add(from);
-	        params.add(to);
-
-	        if (type != null) {
-	            sql.append("AND type = ? ");
-	            params.add(type);
-	        }
-	        if (status != null) {
-	            sql.append("AND status = ? ");
-	            params.add(status);
-	        }
-	        // No GROUP BY here, not needed for single account query
-	    } else if (customerId != null) {
-	        if (from == null || to == null) {
-	            throw new TaskException("From and To date must be provided when filtering by customer ID");
-	        }
-
-	        sql.append("AND user_id = ? AND timestamp BETWEEN ? AND ? ");
-	        params.add(customerId);
-	        params.add(from);
-	        params.add(to);
-
-	        if (type != null) {
-	            sql.append("AND type = ? ");
-	            params.add(type);
-	        }
-	        if (status != null) {
-	            sql.append("AND status = ? ");
-	            params.add(status);
-	        }
-
-	    }
-
-
-	    // For sorting the transactions by account number
-	    sql.append("ORDER BY account_number, timestamp DESC ");
-	    sql.append("LIMIT ? OFFSET ? ");
-	    params.add(limit);
-	    params.add(offset);
-
+	    List<Transaction> transactions = new ArrayList<>();
 
 	    try (ConnectionManager cm = new ConnectionManager()) {
 	        cm.initConnection();
 	        Connection conn = cm.getConnection();
-	        try (PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
-	            for (int i = 0; i < params.size(); i++) {
-	                stmt.setObject(i + 1, params.get(i));
-	            }
 
-	            ResultSet rs = stmt.executeQuery();
-	            while (rs.next()) {
-	                Transaction t = new Transaction();
-	                t.setTransactionReferenceNumber(rs.getLong("transaction_reference_number"));
-	                t.setTransactionId(rs.getLong("transaction_id"));
-	                t.setAccountNumber(rs.getLong("account_number"));
-	                t.setAmount(rs.getDouble("amount"));
-	                t.setType(Transaction.TransactionType.valueOf(rs.getString("type")));
-	                t.setStatus(Transaction.TransactionStatus.valueOf(rs.getString("status")));
-	                t.setTimestamp(rs.getLong("timestamp"));
-	                t.setDoneBy(rs.getLong("done_by"));
-	                t.setClosingBalance(rs.getDouble("closing_balance"));
-	                t.setUserId(rs.getLong("user_id"));
+	        if (txnId != null) {
+	            transactions.addAll(fetchBySingleParam(conn, "transaction_id", txnId));
+	        } else if (refNum != null) {
+	            transactions.addAll(fetchBySingleParam(conn, "transaction_reference_number", refNum));
+	        } else if (accNum != null) {
+	            transactions.addAll(fetchByAccount(conn, accNum, from, to, type, status, limit, offset));
+	        } else if (customerId != null && from != null && to != null) {
+	            // Enforce hard limit of 10 per account
+	            int perAccountLimit = Math.min(limit, 10);
 
-	                try {
-	                    t.setBeneficiaryAccountNumber(rs.getLong("beneficiery_account_number"));
-	                } catch (Exception ignore) {
+	            String accountSQL = "SELECT account_number FROM accounts WHERE user_id = ?";
+	            try (PreparedStatement ps = conn.prepareStatement(accountSQL)) {
+	                ps.setLong(1, customerId);
+	                ResultSet rs = ps.executeQuery();
+
+	                while (rs.next()) {
+	                    Long acct = rs.getLong("account_number");
+
+	                    // Fetch last perAccountLimit transactions per account
+	                    List<Transaction> accTxns = fetchByAccount(
+	                        conn, acct, from, to, type, status, perAccountLimit, 0
+	                    );
+	                    transactions.addAll(accTxns);
 	                }
-
-	                try {
-	                    t.setIfscCode(rs.getString("ifsc_code"));
-	                } catch (Exception ignore) {
-	                }
-
-	                result.add(t);
 	            }
 	        }
+
 	    } catch (SQLException e) {
-	        throw new TaskException("Failed to fetch filtered transactions", e);
+	        throw new TaskException("SQL Error while fetching transactions", e);
 	    } catch (Exception e) {
-	        throw new TaskException(ExceptionMessages.DATABASE_CONNECTION_FAILED, e);
+	        throw new TaskException("Failed to fetch transactions", e);
 	    }
 
-	    return result;
+	    return transactions;
 	}
+
 
 	
 	public List<Transaction> getTransactionsByUserAndDateRange(long userId, long fromTimestamp, long toTimestamp)
@@ -390,6 +355,117 @@ public class TransactionDAO {
 
 	    return transactions;
 	}
+
+	private List<Transaction> fetchByAccount(Connection conn, Long accNum, Long from, Long to,
+            String type, String status, int limit, int offset)
+			throws SQLException {
+			
+			List<Object> params = new ArrayList<>();
+			StringBuilder sql = new StringBuilder("SELECT * FROM transactions WHERE account_number = ?");
+			
+			params.add(accNum);
+			
+			if (from != null && to != null) {
+			sql.append(" AND timestamp BETWEEN ? AND ?");
+			params.add(from);
+			params.add(to);
+			}
+			
+			if (type != null) {
+			sql.append(" AND type = ?");
+			params.add(type);
+			}
+			
+			if (status != null) {
+			sql.append(" AND status = ?");
+			params.add(status);
+			}
+			
+			sql.append(" ORDER BY timestamp DESC LIMIT ? OFFSET ?");
+			params.add(limit);
+			params.add(offset);
+			
+			List<Transaction> result = new ArrayList<>();
+			try (PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+			for (int i = 0; i < params.size(); i++) {
+			stmt.setObject(i + 1, params.get(i));
+			}
+			
+			ResultSet rs = stmt.executeQuery();
+			while (rs.next()) {
+			result.add(mapTransaction(rs));
+			}
+			}
+			
+			return result;
+}
+	
+	
+	
+	
+	
+	
+	private List<Transaction> fetchBySingleParam(Connection conn, String field, Long value) throws SQLException {
+	    List<Transaction> result = new ArrayList<>();
+	    String sql = "SELECT * FROM transactions WHERE " + field + " = ?";
+
+	    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+	        stmt.setLong(1, value);
+	        ResultSet rs = stmt.executeQuery();
+
+	        while (rs.next()) {
+	            result.add(mapTransaction(rs));
+	        }
+	    }
+
+	    return result;
+	}
+
+	
+	private Transaction mapTransaction(ResultSet rs) throws SQLException {
+	    Transaction t = new Transaction();
+	    t.setTransactionReferenceNumber(rs.getLong("transaction_reference_number"));
+	    t.setTransactionId(rs.getLong("transaction_id"));
+	    t.setAccountNumber(rs.getLong("account_number"));
+	    t.setAmount(rs.getDouble("amount"));
+	    t.setType(Transaction.TransactionType.valueOf(rs.getString("type")));
+	    t.setStatus(Transaction.TransactionStatus.valueOf(rs.getString("status")));
+	    t.setTimestamp(rs.getLong("timestamp"));
+	    t.setDoneBy(rs.getLong("done_by"));
+	    t.setClosingBalance(rs.getDouble("closing_balance"));
+	    t.setUserId(rs.getLong("user_id"));
+
+	    try {
+	        t.setBeneficiaryAccountNumber(rs.getLong("beneficiery_account_number"));
+	    } catch (Exception ignore) {}
+
+	    try {
+	        t.setIfscCode(rs.getString("ifsc_code"));
+	    } catch (Exception ignore) {}
+
+	    return t;
+	}
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 
 
 

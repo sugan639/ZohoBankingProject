@@ -29,6 +29,7 @@ import com.sbank.netbanking.model.Transaction.TransactionType;
 import com.sbank.netbanking.model.User;
 import com.sbank.netbanking.model.User.Role;
 import com.sbank.netbanking.service.BcryptService;
+import com.sbank.netbanking.service.TransactionService;
 import com.sbank.netbanking.util.DateUtil;
 import com.sbank.netbanking.util.ErrorResponseUtil;
 import com.sbank.netbanking.util.PojoJsonConverter;
@@ -306,67 +307,30 @@ public class EmployeeHandler {
 
     // GET /employee/transactions
     public void getTransactions(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-    	//Authorization 
-	    SessionData sessionData =  new SessionData();
-	    sessionData = (SessionData) req.getAttribute("sessionData");
-        long employeeId = sessionData.getUserId();
-    	
-    	 UserDAO userDao = new UserDAO();
-            Role authRole = userDao.getUserById(employeeId).getRole();
-            if(authRole != Role.EMPLOYEE) {
-            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-            	 return;
+        try {
+            SessionData sessionData = (SessionData) req.getAttribute("sessionData");
+            long empId = sessionData.getUserId();
+
+            UserDAO userDAO = new UserDAO();
+            if (userDAO.getUserById(empId).getRole() != Role.EMPLOYEE) {
+                throw new TaskException("Unauthorized");
             }
-    	RequestJsonConverter converter = new RequestJsonConverter();
- 	    PojoJsonConverter pojoConverter = new PojoJsonConverter();
- 	    TransactionDAO transactionDAO = new TransactionDAO();
 
- 	    try {
- 	        JSONObject json = converter.convertToJson(req);
+            RequestJsonConverter converter = new RequestJsonConverter();
+            JSONObject json = converter.convertToJson(req);
 
- 	        Long customerId = json.has("customer_id") ? json.getLong("customer_id") : null;
- 	        Long txnId = json.has("transaction_id") ? json.getLong("transaction_id") : null;
- 	        Long refNum = json.has("transaction_reference_number") ? json.getLong("transaction_reference_number") : null;
- 	        Long accNum = json.has("account_number") ? json.getLong("account_number") : null;
- 	        Long from = json.has("from_date") ? json.getLong("from_date") : null;
- 	        Long to = json.has("to_date") ? json.getLong("to_date") : null;
- 	        String type = json.optString("type", null);
- 	        String status = json.optString("status", null);
- 	        int limit = json.has("limit") ? json.getInt("limit") : 100;
- 	        int offset = json.has("offset") ? json.getInt("offset") : 0;
+            TransactionService transactionService = new TransactionService();
+            JSONObject result = transactionService.fetchTransactions(json, Role.EMPLOYEE, empId);
 
- 	       // Validation
- 	       boolean hasTxnId = txnId != null;
- 	      boolean hasRefNum = refNum != null;
- 	      boolean hasAccountFilter = accNum != null && from != null && to != null;
- 	      boolean hasCustomerFilter = customerId != null && from != null && to != null;
+            res.setContentType("application/json");
+            res.getWriter().write(result.toString());
 
- 	      if (!(hasTxnId || hasRefNum || hasAccountFilter || hasCustomerFilter)) {
- 	          ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
- 	              new ErrorResponse("Bad Request", 400, "Provide transaction_id OR reference_number OR (account_number or customer_id) with from_date and to_date"));
- 	          return;
- 	      }
-
-
- 	
-		        List<Transaction> txns = transactionDAO.getFilteredTransactions(
-		            txnId, refNum, accNum,customerId, from, to, type, status, limit, offset
-		        );
-
- 	        JSONArray jsonArr = pojoConverter.pojoListToJsonArray(txns);
- 	        JSONObject result = new JSONObject();
- 	        result.put("transactions", jsonArr);
-
- 	        res.setContentType("application/json");
- 	        res.getWriter().write(result.toString());
-
- 	    } catch (IOException e) {
- 	        e.printStackTrace();
- 	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
- 	            new ErrorResponse("Server Error", 500, "Could not fetch transactions"));
- 	    }
+        } catch (Exception e) {
+            e.printStackTrace();
+            ErrorResponseUtil.send(res, 500, new ErrorResponse("Error", 500, e.getMessage()));
+        }
     }
+
 
 
     // PUT /employee/users/{user_id}
