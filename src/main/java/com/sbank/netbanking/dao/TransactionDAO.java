@@ -31,6 +31,7 @@ public class TransactionDAO {
 	    long currentTime = System.currentTimeMillis();
 	    String status = TransactionStatus.SUCCESS.name();
 	    String type = transactionType.name();
+	    
 
 	    try (ConnectionManager connectionManager = new ConnectionManager()) {
 	        connectionManager.initConnection();
@@ -41,6 +42,11 @@ public class TransactionDAO {
 	            PreparedStatement updateAccStmt = conn.prepareStatement(updateAccountSQL);
 	            PreparedStatement insertTxnStmt = conn.prepareStatement(insertTransactionSQL, Statement.RETURN_GENERATED_KEYS)
 	        ) {
+	        	
+	        	
+	            System.out.println(toAccountNumber);
+		        System.out.println(amount);
+		        
 	            // 1. Fetch account details
 	            getAccStmt.setLong(1, toAccountNumber);
 	            ResultSet rs = getAccStmt.executeQuery();
@@ -77,8 +83,10 @@ public class TransactionDAO {
 	            insertTxnStmt.setLong(8, doneBy);
 	            insertTxnStmt.setDouble(9, updatedBalance);
 	            
-	            insertTxnStmt.setLong(10, fromAccountNumber);
-	            insertTxnStmt.setString(11, ifcsCode);
+	           
+	            insertTxnStmt.setObject(10, fromAccountNumber); // handles null
+	            insertTxnStmt.setObject(11, ifcsCode);          // handles null
+
 
 	            insertTxnStmt.executeUpdate();
 
@@ -119,7 +127,8 @@ public class TransactionDAO {
 	    } catch (SQLException e) {
 	        throw new TaskException("Failed to perform deposit", e);
 	    } catch (Exception e) {
-	        throw new TaskException(ExceptionMessages.WRONG_ACTION, e);
+	    	e.printStackTrace();
+	        throw new TaskException(ExceptionMessages.TRANSACTION_FAILED, e);
 	    }
 	}
 

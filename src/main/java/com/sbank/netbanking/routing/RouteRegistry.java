@@ -7,6 +7,7 @@ import com.sbank.netbanking.auth.AuthHandler;
 import com.sbank.netbanking.handler.AdminHandler;
 import com.sbank.netbanking.handler.CustomerHandler;
 import com.sbank.netbanking.handler.EmployeeHandler;
+import com.sbank.netbanking.handler.NewUserRegister;
 import com.sbank.netbanking.interfaces.HandlerInterface;
 
 
@@ -18,6 +19,7 @@ public class RouteRegistry {
     CustomerHandler customerHandler = new CustomerHandler();
     EmployeeHandler employeeHandler = new EmployeeHandler();
     AdminHandler adminHandler = new AdminHandler();
+    NewUserRegister  newUserRegister = new NewUserRegister();
     
     public RouteRegistry() {
         // Authentication
@@ -54,7 +56,7 @@ public class RouteRegistry {
         routes.add(new Route("GET", "/admin/branches", adminHandler::getBranchById));
         routes.add(new Route("PUT", "/admin/branches", adminHandler::updateBranch));
         routes.add(new Route("GET", "/admin/users", adminHandler::getUser));
-        routes.add(new Route("PUT", "/admin/users/update", adminHandler::updateUser));
+        routes.add(new Route("POST", "/admin/users/update", adminHandler::updateUser));
         routes.add(new Route("POST", "/admin/transactions/deposit", adminHandler::deposit));
         routes.add(new Route("POST", "/admin/transactions/withdraw", adminHandler::withdraw));
         routes.add(new Route("POST", "/admin/transactions/transfer", adminHandler::transfer));
@@ -66,6 +68,9 @@ public class RouteRegistry {
         routes.add(new Route("POST", "/admin/branch/create", adminHandler::createBranch));
         routes.add(new Route("GET", "/admin/account/get-accounts", adminHandler::getAccountDetails));
 
+
+        // User registration
+        routes.add(new Route("POST", "/register", newUserRegister::registerUser));
 
     }
     

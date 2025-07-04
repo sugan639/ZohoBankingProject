@@ -28,6 +28,7 @@ public class ExceptionMessages {
 		public static String DATABASE_CONNECTION_FAILED = "Database connection failed.";
 		public static String USERDATA_UPDATE_FAILED = "Unable to update user data";
 		public static String WRONG_ACTION = "Unable to make the transaction.";
+		public static String TRANSACTION_FAILED = "Unable to make the transaction.";
 
 	    public static String USERDATA_RETRIEVAL_FAILED = "User data retrieval failed";
 	    public static String REQUEST_PARSE_TO_JSON_FAILED =  "Request parsing to JSON failed";

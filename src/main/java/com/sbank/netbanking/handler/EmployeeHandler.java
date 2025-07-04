@@ -457,6 +457,7 @@ public class EmployeeHandler {
 	        Long accountNumber = json.has("account_number") ? json.getLong("account_number") : null;
 	        Double amount = json.has("amount") ? json.getDouble("amount") : null;
 
+	        
 	        if (accountNumber == null || amount == null || amount <= 0) {
 	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
 	                new ErrorResponse("Bad Request", 400, "account_number and valid amount are required"));
@@ -488,11 +489,11 @@ public class EmployeeHandler {
 	        
 	        TransactionUtil transactionUtil = new TransactionUtil();
             long transactionId = transactionUtil.generateTransactionId();
-            @SuppressWarnings("null")
-            long fromAccount = (Long) null;
-	        
+      
+            
+       
 	        // Perform deposit and return transaction info
-	        Transaction transaction = transactionDAO.deposit(accountNumber, amount, doneBy, transactionType, transactionId, fromAccount, null);
+	        Transaction transaction = transactionDAO.deposit(accountNumber, amount, doneBy, transactionType, transactionId, null, null);
 
 	        JSONObject jsonResp = pojoConverter.pojoToJson(transaction);
 	        jsonResp.put("message", "Deposit successful");

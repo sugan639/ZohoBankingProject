@@ -15,6 +15,9 @@ public class MainServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
              {
         try {
+  
+
+
 			requestRouter.route(request, response, "GET");
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
