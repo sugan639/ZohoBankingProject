@@ -64,7 +64,7 @@ public class RouteRegistry {
         routes.add(new Route("POST", "/admin/account/update", adminHandler::updateAccountStatus));
         routes.add(new Route("POST", "/admin/new-employee", adminHandler::addEmployee));
         routes.add(new Route("POST", "/admin/new-customer", adminHandler::addCustomer));
-        routes.add(new Route("GET", "/admin/transactions/query", adminHandler::queryTransactions));
+        routes.add(new Route("POST", "/admin/transactions/query", adminHandler::queryTransactions));
         routes.add(new Route("POST", "/admin/branch/create", adminHandler::createBranch));
         routes.add(new Route("GET", "/admin/account/get-accounts", adminHandler::getAccountDetails));
 

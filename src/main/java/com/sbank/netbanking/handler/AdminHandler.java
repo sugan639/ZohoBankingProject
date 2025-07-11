@@ -33,7 +33,6 @@ import com.sbank.netbanking.model.User.Role;
 import com.sbank.netbanking.service.BcryptService;
 import com.sbank.netbanking.service.TransactionService;
 import com.sbank.netbanking.util.BranchUtil;
-import com.sbank.netbanking.util.DateUtil;
 import com.sbank.netbanking.util.ErrorResponseUtil;
 import com.sbank.netbanking.util.PojoJsonConverter;
 import com.sbank.netbanking.util.RandomPasswordGenerator;
@@ -343,7 +342,7 @@ public class AdminHandler {
 
 	            // Customer-specific fields
 	            String dobStr = json.optString("dob", null);
-	            Long dob = dobStr != null ? DateUtil.convertDateToEpoch(dobStr) : null;
+	            Long dob = dobStr != null ? Long.parseLong(dobStr) : null;
 	            String address = json.optString("address", null);
 	            Long aadhar = json.has("aadhar_number") ? json.getLong("aadhar_number") : null;
 	            String pan = json.optString("pan_number", null);
@@ -548,7 +547,7 @@ public class AdminHandler {
 	        if (transferType.equalsIgnoreCase("INTRA_BANK")) {
 	        	
 	        	System.out.println("fromAccount: "+ fromAccount);
-	        	System.out.println("Amount: "+ amount);
+	        	System.out.println("toAccount: "+ fromAccount);
 
 	        	transactionDAO.withdraw(fromAccount, amount, doneBy, TransactionType.INTRA_BANK_DEBIT, transactionId, toAccount, null);
 	            transactionDAO.deposit(toAccount, amount, doneBy, TransactionType.INTRA_BANK_CREDIT, transactionId, fromAccount, null);
@@ -800,7 +799,7 @@ public class AdminHandler {
 
             // Generate random password
             String password = passwordGenerator.generateRandomPassword(8);
-
+            
             String hashedPassword = BcryptService.hashPassword(password);
             
             if (name == null || email == null || dobString == null || address == null || 
@@ -810,8 +809,9 @@ public class AdminHandler {
                 return;
             }
 
-            // Convert DOB to epoch millis
-            long dobMillis = DateUtil.convertDateToEpoch(dobString);
+            // Convert string DOB to epoch millis
+
+            	long dobMillis = Long.parseLong(dobString);
 
             // Save to DB
             NewCustomer customer = customerDAO.addNewCustomer(name, hashedPassword, email, mobileNumber, dobMillis,

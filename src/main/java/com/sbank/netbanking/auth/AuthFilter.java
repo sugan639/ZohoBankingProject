@@ -24,7 +24,8 @@ import com.sbank.netbanking.util.ErrorResponseUtil;
 @WebFilter("/*")
 public class AuthFilter implements Filter {
 
-    
+
+	
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -34,7 +35,7 @@ public class AuthFilter implements Filter {
         SessionService sessionService = new SessionService();
         // CORS setup
         String origin = httpRequest.getHeader("Origin");
-        if ("http://localhost:3004".equals(origin)) {
+        if ("http://localhost:3005".equals(origin)) {
             httpResponse.setHeader("Access-Control-Allow-Origin", origin);
         }
         httpResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
@@ -53,12 +54,18 @@ public class AuthFilter implements Filter {
 
 		System.out.println("Intercepted path: " + path + " at IST time: " + formattedTime);
         
+
+		
+		
         try {
             if (isPublicRoute(path)) {
                 chain.doFilter(request, response);
                 return;
             }
 
+            
+            
+            
             CookieUtil cookieUtil = new CookieUtil();
             String sessionId = cookieUtil.getSessionIdFromCookies(httpRequest);
             if (sessionId == null) {
