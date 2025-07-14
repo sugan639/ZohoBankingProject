@@ -61,9 +61,11 @@ public class AccountDAO {
 	        throw new TaskException("Failed to create account", e);
 	    }
 	    
+	    
 	    catch (Exception e) {
 	        throw new TaskException(ExceptionMessages.DATABASE_CONNECTION_FAILED, e);
 	    }
+	  
 	    
 	    
 	}

@@ -93,6 +93,42 @@ public class BranchDAO {
         }   
 }
     
+    public Branch getBranchByIfsc(String ifscCode) throws TaskException {
+        String sql = "SELECT * FROM branches WHERE ifsc_code = ?";
+        
+        try (ConnectionManager connectionManager = new ConnectionManager()){
+    		connectionManager.initConnection();
+            Connection conn = connectionManager.getConnection();  
+            
+    	try(PreparedStatement stmt = conn.prepareStatement(sql)){
+
+            stmt.setString(1, ifscCode);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    Branch branch = new Branch();
+                    branch.setBranchId(rs.getLong("branch_id"));
+                    branch.setAdminId(rs.getLong("admin_id"));
+                    branch.setBankName(rs.getString("bank_name"));
+                    branch.setLocation(rs.getString("location"));
+                    branch.setCreatedAt(rs.getLong("created_at"));
+                    branch.setModifiedAt(rs.getLong("modified_at"));
+                    branch.setModifiedBy(rs.getLong("modified_by"));
+                    return branch;
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new TaskException("Failed to fetch branch with IFSC Code:  " + ifscCode, e);
+        }
+
+        return null;
+    }
+        
+        catch (Exception e) {
+            throw new TaskException(ExceptionMessages.DATABASE_CONNECTION_FAILED, e);
+        }   
+}
+    
     public Branch updateBranch(Long branchId, Long adminId, String ifscCode, String bankName, String location) throws TaskException {
         if (branchId == null ) {
             throw new TaskException("branchId  required");

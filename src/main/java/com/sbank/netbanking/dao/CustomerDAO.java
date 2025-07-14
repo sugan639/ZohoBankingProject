@@ -109,6 +109,7 @@ public class CustomerDAO {
                 stmt.setLong(1, userId);
 
                 try (ResultSet rs = stmt.executeQuery()) {
+                	
                     if (rs.next()) {
                         Customer customer = new Customer();
                         customer.setCustomerId(rs.getLong("user_id"));

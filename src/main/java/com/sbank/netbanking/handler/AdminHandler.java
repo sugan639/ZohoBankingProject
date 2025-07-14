@@ -143,6 +143,53 @@ public class AdminHandler {
 	    }
 	}
 
+	
+	
+	public void getBranchByIfsc(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+	    try {
+
+	    	//Authorization 
+		    SessionData sessionData =  new SessionData();
+		    sessionData = (SessionData) req.getAttribute("sessionData");
+	        long adminId = sessionData.getUserId();
+	    	
+	    	 UserDAO userDao = new UserDAO();
+	            Role role = userDao.getUserById(adminId).getRole();
+	            if(role != Role.ADMIN) {
+	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            	 return;
+	            }
+	            
+	            
+	        String ifscCode = req.getParameter("ifsccode");
+
+	        if (ifscCode == null || ifscCode.isEmpty()) {
+	            throw new TaskException("Missing or invalid 'IFSC code' in query parameters.");
+	        }
+
+
+	        Branch branch = new Branch();
+	        BranchDAO branchDao = new BranchDAO();
+
+	        
+	        branch = branchDao.getBranchByIfsc(ifscCode);  // Branch POJO
+	        System.out.println("Branch ID from the GET request data @ getBranch method: "+ ifscCode);
+
+	        PojoJsonConverter converter = new PojoJsonConverter();
+	        JSONObject jsonBranch = converter.pojoToJson(branch); // Branch JSON
+
+	       
+	        res.setContentType("application/json");
+	        res.getWriter().write(jsonBranch.toString());
+
+	    } catch (NumberFormatException e) {
+	        throw new TaskException("Invalid branch ID format", e);
+	    } catch (IOException e) {
+	        throw new TaskException("Failed to write branch response", e);
+	    }
+	}
+	
 	// 3. PATCH /admin/branches     // Working
 	public void updateBranch(HttpServletRequest req, HttpServletResponse res) throws TaskException {
 	    try {
@@ -241,10 +288,17 @@ public class AdminHandler {
 	        case CUSTOMER:
 	            CustomerDAO customerDAO = new CustomerDAO();
 	            Customer customer = customerDAO.getCustomerById(userId);
+	            
 	            if (customer != null) {
+	            	System.out.println("customer is not null");
 	                JSONObject custJson = converter.pojoToJson(customer);
 	                res.setContentType("application/json");
-	    	        res.getWriter().write(custJson.toString());	            }
+	    	        res.getWriter().write(custJson.toString());	            
+	    	        }
+	            else {
+	            	ErrorResponseUtil.send(res, 404,
+	        	            new ErrorResponse("Input Error", 404, "User not found"));
+	            }
 	            break;
 
 	        case EMPLOYEE:

@@ -57,7 +57,7 @@ public class LoginService {
         } catch (JSONException e) {
             throw new TaskException(ExceptionMessages.DATA_NOT_FOUND_IN_JSON);
         } catch (NumberFormatException e) {
-            throw new TaskException(ExceptionMessages.LONG_OBJECT_CONVERSION_ERROR, e);
+            throw new TaskException(ExceptionMessages.USER_VALIDATION_FAILED, e);
         }
 
         return null;

@@ -35,7 +35,7 @@ public class AuthFilter implements Filter {
         SessionService sessionService = new SessionService();
         // CORS setup
         String origin = httpRequest.getHeader("Origin");
-        if ("http://localhost:3003".equals(origin)) {
+        if ("http://localhost:3000".equals(origin)) {
             httpResponse.setHeader("Access-Control-Allow-Origin", origin);
         }
         httpResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
