@@ -17,29 +17,29 @@ import com.sbank.netbanking.model.Branch;
 public class BranchDAO {
 
 	public Branch createBranch(Branch branch, long modifiedBy) throws TaskException {
-	    String insertSQL = "INSERT INTO branches (branch_id, admin_id, ifsc_code, bank_name, location, created_at, modified_at, modified_by) "
-	                     + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+	    String insertSQL = "INSERT INTO branches ( admin_id, ifsc_code, bank_name, location, created_at, modified_at, modified_by) "
+	                     + "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
 	    long currentTime = System.currentTimeMillis();
-	    long branchId = System.nanoTime(); // or use a sequence generator
+
 
 	    try (ConnectionManager cm = new ConnectionManager()) {
 	        cm.initConnection();
 	        Connection conn = cm.getConnection();
 
 	        try (PreparedStatement stmt = conn.prepareStatement(insertSQL)) {
-	            stmt.setLong(1, branchId);
-	            stmt.setLong(2, branch.getAdminId());
-	            stmt.setString(3, branch.getIfscCode());
-	            stmt.setString(4, branch.getBankName());
-	            stmt.setString(5, branch.getLocation());
+	            
+	            stmt.setLong(1, branch.getAdminId());
+	            stmt.setString(2, branch.getIfscCode());
+	            stmt.setString(3, branch.getBankName());
+	            stmt.setString(4, branch.getLocation());
+	            stmt.setLong(5, currentTime);
 	            stmt.setLong(6, currentTime);
-	            stmt.setLong(7, currentTime);
-	            stmt.setLong(8, modifiedBy);
+	            stmt.setLong(7, modifiedBy);
 
 	            stmt.executeUpdate();
 
-	            branch.setBranchId(branchId);
+	         
 	            branch.setCreatedAt(currentTime);
 	            branch.setModifiedAt(currentTime);
 	            branch.setModifiedBy(modifiedBy);

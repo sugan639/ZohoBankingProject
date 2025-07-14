@@ -85,17 +85,17 @@ CREATE TABLE beneficiery (
     CONSTRAINT fk_beneficiery_customer FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
 ) AUTO_INCREMENT = 700000000001;
 
-mysql> CREATE TABLE branches (
-    ->   branch_id BIGINT PRIMARY KEY,
-    ->   admin_id BIGINT NOT NULL,
-    ->   ifsc_code VARCHAR(10),
-    ->   bank_name VARCHAR(30),
-    ->   location VARCHAR(30),
-    ->   created_at BIGINT,
-    ->   modified_at BIGINT,
-    ->   modified_by BIGINT,
-    -> );
-Query OK, 0 rows affected (0.05 sec)
+CREATE TABLE branches (
+  branch_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  admin_id BIGINT NOT NULL,
+  ifsc_code VARCHAR(10),
+  bank_name VARCHAR(30),
+  location VARCHAR(30),
+  created_at BIGINT,
+  modified_at BIGINT,
+  modified_by BIGINT
+) AUTO_INCREMENT = 900001;
+
 
 mysql> CREATE TABLE account_opening_request (
     ->   request_id BIGINT PRIMARY KEY,

@@ -35,7 +35,7 @@ public class AuthFilter implements Filter {
         SessionService sessionService = new SessionService();
         // CORS setup
         String origin = httpRequest.getHeader("Origin");
-        if ("http://localhost:3005".equals(origin)) {
+        if ("http://localhost:3003".equals(origin)) {
             httpResponse.setHeader("Access-Control-Allow-Origin", origin);
         }
         httpResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
@@ -73,7 +73,9 @@ public class AuthFilter implements Filter {
                          new ErrorResponse("Unauthorized", 401, "Missing session cookie"));
                      return;
             }
+
             
+           
             SessionData sessionData =  new SessionData();
             sessionData =  sessionService.sessionValidator(sessionId); // Returns session data if valid session exists
 

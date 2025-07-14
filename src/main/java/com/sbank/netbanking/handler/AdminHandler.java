@@ -674,7 +674,7 @@ public class AdminHandler {
             res.setContentType("application/json");
             res.getWriter().write(jsonResponse.toString());
 
-        } catch (IOException e) {
+        } catch (IOException  e) {
             ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                 new ErrorResponse("TaskException", 500, e.getMessage()));
         }
@@ -869,7 +869,7 @@ public class AdminHandler {
                 case "ACTIVATE":
                 	accountDAO.changeAccountStatus(accountNumber, "ACTIVE", modifiedBy);
                     break;
-                case "INACTIVATE":
+                case "DEACTIVATE":
                 	accountDAO.changeAccountStatus(accountNumber, "INACTIVE", modifiedBy);
                     break;
                 case "DELETE":
@@ -901,19 +901,25 @@ public class AdminHandler {
         BranchDAO branchDAO = new BranchDAO();
 
         try {
-        	//Authorization 
-		    SessionData sessionData =  new SessionData();
-		    sessionData = (SessionData) req.getAttribute("sessionData");
-	        long adminId = sessionData.getUserId();
-	    	
-	    	 UserDAO userDao = new UserDAO();
-	            Role authRole = userDao.getUserById(adminId).getRole();
-	            if(authRole != Role.ADMIN) {
-	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-	            	 return;
-	            }
+            // Authorization 	
+            SessionData sessionData = (SessionData) req.getAttribute("sessionData");
+            long adminId = sessionData.getUserId();
+
+            UserDAO userDao = new UserDAO();
+            Role authRole = userDao.getUserById(adminId).getRole();
+            if (authRole != Role.ADMIN) {
+                ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+                        new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+                return;
+            }
+
             JSONObject json = jsonConverter.convertToJson(req);
+
+            // Handle null JSON body
+            if (json == null) {
+                res.setStatus(HttpServletResponse.SC_NO_CONTENT); // or SC_BAD_REQUEST (400) depending on API spec
+                return;
+            }
 
             String newAdminIdString = json.optString("new_admin_id");
             String ifscCode = json.optString("ifsc_code");
@@ -926,15 +932,13 @@ public class AdminHandler {
                 return;
             }
 
-
             // Generate IFSC code if not provided
             if (ifscCode == null || ifscCode.isEmpty()) {
-            	
-            	BranchUtil branchUtil = new BranchUtil(); 
+                BranchUtil branchUtil = new BranchUtil(); 
                 ifscCode = branchUtil.generateIfscCode(bankName, location);
             }
 
-        	Long newAdminId = Long.parseLong(newAdminIdString);
+            Long newAdminId = Long.parseLong(newAdminIdString);
 
             Branch branch = new Branch();
             branch.setAdminId(newAdminId);
@@ -956,7 +960,7 @@ public class AdminHandler {
                     new ErrorResponse("Error", 500, e.getMessage()));
         }
     }
-    
+
  // GET /admin/accounts
     public void getAccountDetails(HttpServletRequest req, HttpServletResponse res) throws TaskException {
         AccountDAO accountDAO = new AccountDAO();
