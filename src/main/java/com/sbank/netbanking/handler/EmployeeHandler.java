@@ -807,80 +807,86 @@ public class EmployeeHandler {
   
   // Get account data by customer id or account number
   public void getAccountDetails(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-      AccountDAO accountDAO = new AccountDAO();
-      PojoJsonConverter converter = new PojoJsonConverter();
+	    AccountDAO accountDAO = new AccountDAO();
+	    PojoJsonConverter converter = new PojoJsonConverter();
 
-      try {
-      	//Authorization 
-		    SessionData sessionData =  new SessionData();
-		    sessionData = (SessionData) req.getAttribute("sessionData");
+	    try {
+	        // Authorization
+	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
 	        long employeeId = sessionData.getUserId();
-	    	
-	    	 UserDAO userDao = new UserDAO();
-	            Role authRole = userDao.getUserById(employeeId).getRole();
-	            if(authRole != Role.EMPLOYEE) {
-	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-	            	 return;
+
+	        UserDAO userDao = new UserDAO();
+	        Role authRole = userDao.getUserById(employeeId).getRole();
+	        if (authRole != Role.EMPLOYEE) {
+	            ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+	                    new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+	            return;
+	        }
+
+	        String accountNumParam = req.getParameter("account_number");
+	        String customerIdParam = req.getParameter("customer_id");
+
+	        // Debug print
+	        System.out.println("account_number param: " + accountNumParam);
+	        System.out.println("customer_id param: " + customerIdParam);
+
+	        // Get employee branch_id
+	        EmployeeDAO employeeDAO = new EmployeeDAO();
+	        Employee employee = employeeDAO.getEmployeeById(employeeId);
+	        long employeeBranchId = employee.getBranchId();
+
+	        List<Account> accounts = new ArrayList<>();
+
+	        if (accountNumParam != null && !accountNumParam.isEmpty()) {
+	            long accountNumber = Long.parseLong(accountNumParam.trim());
+
+	            // Get account's branch_id
+	            Account account = accountDAO.getAccountByNumber(accountNumber);
+	            if (account == null) {
+	                ErrorResponseUtil.send(res, HttpServletResponse.SC_NOT_FOUND,
+	                        new ErrorResponse("Not Found", 404, "Account not found"));
+	                return;
 	            }
-	            
-	            
-          String accountNumParam = req.getParameter("account_number");
-          String customerIdParam = req.getParameter("customer_id");
-          
-          // Get employee branch_id
-          EmployeeDAO employeeDAO = new EmployeeDAO();
-          Employee employee = employeeDAO.getEmployeeById(employeeId);
-          long employeeBranchId = employee.getBranchId();
 
-          // Get account's branch_id
-          long accountNumber = Long.parseLong(accountNumParam);
+	            long accountBranchId = account.getBranchId();
+	            if (employeeBranchId != accountBranchId) {
+	                ErrorResponseUtil.send(res, HttpServletResponse.SC_FORBIDDEN,
+	                        new ErrorResponse("Unauthorized", 403, "You can only access accounts from your branch"));
+	                return;
+	            }
 
-          Account account = accountDAO.getAccountByNumber(accountNumber);
-          long accountBranchId = account.getBranchId();
-         if (employeeBranchId != accountBranchId) {
-              ErrorResponseUtil.send(res, HttpServletResponse.SC_FORBIDDEN,
-                      new ErrorResponse("Unauthorized", 403, "You can only update accounts from your branch"));
-              return;
-          }
+	            accounts.add(account);
+	        } else if (customerIdParam != null && !customerIdParam.isEmpty()) {
+	            long customerId = Long.parseLong(customerIdParam.trim());
 
-          List<Account> accounts = new ArrayList<>();
+	            // Get accounts by customer and branch
+	            accounts = accountDAO.getAccountsByCustomerAndBranch(customerId, employeeBranchId);
+	        } else {
+	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+	                    new ErrorResponse("Bad Request", 400, "Provide either account_number or customer_id"));
+	            return;
+	        }
 
-          if (accountNumParam != null) {
-              // Fetch by account_number
-              Account acc = accountDAO.getAccountByNumber(accountNumber);
-              if (acc != null) {
-                  accounts.add(acc);
-              }
-          } else if (customerIdParam != null) {
-              // Fetch all accounts by customer_id
-              long customerId = Long.parseLong(customerIdParam);
-              accounts = accountDAO.getAccountsByCustomerAndBranch(customerId, employeeBranchId);
-          } else {
-              ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                      new ErrorResponse("Bad Request", 400, "Provide either account_number or customer_id"));
-              return;
-          }
+	        // Convert to JSON
+	        JSONArray jsonArray = new JSONArray();
+	        for (Account acc : accounts) {
+	            jsonArray.put(converter.pojoToJson(acc));
+	        }
 
-          JSONArray jsonArray = new JSONArray();
-          for (Account acc : accounts) {
-              jsonArray.put(converter.pojoToJson(acc));
-          }
+	        JSONObject response = new JSONObject();
+	        response.put("accounts", jsonArray);
 
-          JSONObject response = new JSONObject();
-          response.put("accounts", jsonArray);
+	        res.setContentType("application/json");
+	        res.getWriter().write(response.toString());
 
-          res.setContentType("application/json");
-          res.getWriter().write(response.toString());
-
-      } catch (NumberFormatException e) {
-          ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                  new ErrorResponse("Bad Request", 400, "Invalid number format"));
-      } catch (IOException e) {
-          ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                  new ErrorResponse("Error", 500, e.getMessage()));
-      }
-  }
+	    } catch (NumberFormatException e) {
+	        ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+	                new ErrorResponse("Invalid number format", 400, "account_number or customer_id must be numeric"));
+	    } catch (IOException e) {
+	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+	                new ErrorResponse("Error", 500, e.getMessage()));
+	    }
+	}
 
 
  

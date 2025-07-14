@@ -201,7 +201,7 @@ public class AccountDAO {
 	    }
 	}
 	
-	public List<Account> getAccountsByCustomerAndBranch(long customerId, long branchId) throws TaskException {
+	public List<Account> getAccountsByCustomerAndBranch(Long customerId, Long branchId) throws TaskException {
 	    List<Account> accountList = new ArrayList<>();
 	    String sql = "SELECT * FROM accounts WHERE user_id = ? AND branch_id = ?";
 
