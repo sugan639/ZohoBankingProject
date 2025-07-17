@@ -29,12 +29,14 @@ public class RouteRegistry {
         // Authentication
         routes.add(new Route("POST", "/auth/login", authHandler::login));
         routes.add(new Route("POST", "/auth/logout", authHandler::logout));
+        routes.add(new Route("POST", "/register", newUserRegister::registerUser));
+        
 
         // Customer
         routes.add(new Route("GET", "/customer/profile", customerHandler::getProfile));
         routes.add(new Route("PUT", "/customer/profile/update", customerHandler::updateProfile));
         routes.add(new Route("GET", "/customer/accounts", customerHandler::getAccounts));
-        routes.add(new Route("GET", "/customer/transactions", customerHandler::getTransaction));
+        routes.add(new Route("POST", "/customer/transactions", customerHandler::getTransaction));
         routes.add(new Route("POST", "/customer/transfer", customerHandler::transferMoney));
         routes.add(new Route("POST", "/customer/beneficiaries/add", customerHandler::addBeneficiary));
         routes.add(new Route("GET", "/customer/beneficiaries/get", customerHandler::getBeneficiary));
@@ -74,8 +76,6 @@ public class RouteRegistry {
         routes.add(new Route("GET", "/admin/account/get-accounts", adminHandler::getAccountDetails));
 
 
-        // User registration
-        routes.add(new Route("POST", "/register", newUserRegister::registerUser));
 
         // Analytics
         routes.add(new Route("GET", "/admin/analytics/monthly-totals", analyticsHandler::getMonthlyTotals));
@@ -85,9 +85,12 @@ public class RouteRegistry {
         routes.add(new Route("GET", "/employee/analytics/transaction-summary",      employeeAnalyticsHandler::branchSummary));
         routes.add(new Route("GET", "/employee/analytics/top-customers", employeeAnalyticsHandler::topCustomers));
 
+        // Customer analytics
+        routes.add(new Route("GET", "/customer/analytics/dashboard-summary", customerHandler::analyticSummary));
+
     }
     
-    
+// /customer/analytics/summary
     
 
     public HandlerInterface matchRoute(String method, String path) {

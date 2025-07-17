@@ -11,6 +11,7 @@ import java.util.List;
 import com.sbank.netbanking.dbconfig.ConnectionManager;
 import com.sbank.netbanking.exceptions.ExceptionMessages;
 import com.sbank.netbanking.exceptions.TaskException;
+import com.sbank.netbanking.model.Account;
 import com.sbank.netbanking.model.Transaction;
 import com.sbank.netbanking.model.Transaction.TransactionStatus;
 import com.sbank.netbanking.model.Transaction.TransactionType;
@@ -41,7 +42,8 @@ public class TransactionDAO {
 	            PreparedStatement getAccStmt = conn.prepareStatement(getAccountSQL);
 	            PreparedStatement updateAccStmt = conn.prepareStatement(updateAccountSQL);
 	            PreparedStatement insertTxnStmt = conn.prepareStatement(insertTransactionSQL, Statement.RETURN_GENERATED_KEYS)
-	        ) {
+	        ) 
+	        {
 	        	
 	        	
 	            System.out.println(toAccountNumber);
@@ -244,27 +246,6 @@ public class TransactionDAO {
 	
 	
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 	public List<Transaction> getFilteredTransactions(
 	        Long txnId, Long refNum, Long accNum, Long customerId,
 	        Long from, Long to, String type, String status,
@@ -454,11 +435,156 @@ public class TransactionDAO {
 
 	    return t;
 	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 
+
+
+	    public List<Account> getAccounts(long customerId) throws TaskException {
+	        List<Account> list = new ArrayList<>();
+
+	        String sql = "SELECT account_number, balance, branch_id, status " +
+	                     "FROM accounts WHERE user_id = ?";
+
+	        try (ConnectionManager cm = new ConnectionManager()) {
+	            cm.initConnection();
+	            Connection conn = cm.getConnection();
+
+	            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+	                ps.setLong(1, customerId);
+	                ResultSet rs = ps.executeQuery();
+
+	                while (rs.next()) {
+	                    Account a = new Account();
+	                    a.setAccountNumber(rs.getLong("account_number"));
+	                    a.setBalance(rs.getDouble("balance"));
+	                    a.setBranchId(rs.getLong("branch_id"));
+	                    a.setStatus(Account.AccountStatus.valueOf(rs.getString("status")));
+	                    list.add(a);
+	                }
+	            }
+	        } catch (SQLException e) {
+	            throw new TaskException("Failed to fetch accounts", e);
+	        } catch (Exception e) {
+	            throw new TaskException(ExceptionMessages.DATABASE_CONNECTION_FAILED, e);
+	        }
+
+	        return list;
+	    }
+
+	    
+	    
+	    
+	    
+	    
+	    /* ---- 2.  Recent N transactions across all accounts --------------- */
+	    public List<Transaction> getRecentTransactions(long customerId,
+	                                                   int limit) throws TaskException {
+
+	        List<Transaction> list = new ArrayList<>();
+
+	        String sql = "SELECT t.* FROM transactions t " +
+	                     "JOIN accounts a ON t.account_number = a.account_number " +
+	                     "WHERE a.user_id = ? " +
+	                     "ORDER BY t.timestamp DESC " +
+	                     "LIMIT ?";
+
+	        try (ConnectionManager cm = new ConnectionManager()) {
+	            cm.initConnection();
+	            Connection conn = cm.getConnection();
+
+	            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+	                ps.setLong(1, customerId);
+	                ps.setInt(2, limit);
+
+	                ResultSet rs = ps.executeQuery();
+	                while (rs.next()) {
+	                    Transaction txn = new Transaction();
+	                    txn.setTransactionId(rs.getLong("transaction_id"));
+	                    txn.setTransactionReferenceNumber(rs.getLong("transaction_reference_number"));
+	                    txn.setAccountNumber(rs.getLong("account_number"));
+	                    txn.setAmount(rs.getDouble("amount"));
+	                    txn.setType(Transaction.TransactionType.valueOf(rs.getString("type")));
+	                    txn.setStatus(Transaction.TransactionStatus.valueOf(rs.getString("status")));
+	                    txn.setTimestamp(rs.getLong("timestamp"));
+	                    list.add(txn);
+	                }
+	            }
+	        } catch (SQLException e) {
+	            throw new TaskException("Failed to fetch recent transactions", e);
+	        } catch (Exception e) {
+	            throw new TaskException(ExceptionMessages.DATABASE_CONNECTION_FAILED, e);
+	        }
+
+	        return list;
+	    }
 	
-	
-	
-	
+
 	
 	
 	

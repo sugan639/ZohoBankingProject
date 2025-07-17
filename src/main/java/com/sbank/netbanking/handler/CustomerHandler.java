@@ -1,6 +1,7 @@
 package com.sbank.netbanking.handler;
 
 import java.io.IOException;
+
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
@@ -25,7 +26,6 @@ import com.sbank.netbanking.model.Transaction;
 import com.sbank.netbanking.model.Transaction.TransactionType;
 import com.sbank.netbanking.model.User.Role;
 import com.sbank.netbanking.service.TransactionService;
-import com.sbank.netbanking.util.DateUtil;
 import com.sbank.netbanking.util.ErrorResponseUtil;
 import com.sbank.netbanking.util.PojoJsonConverter;
 import com.sbank.netbanking.util.RequestJsonConverter;
@@ -70,17 +70,19 @@ public class CustomerHandler {
             // Get session info
             SessionData sessionData = (SessionData) req.getAttribute("sessionData");
             long userId = sessionData.getUserId();
-
+            long modifiedBy = userId;
             // Extract editable fields
             String name = json.optString("name", null);
             String email = json.optString("email", null);
             Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
             String dobStr = json.optString("dob", null);
-            Long dob = dobStr != null ? DateUtil.convertDateToEpoch(dobStr) : null;
+           
             String address = json.optString("address", null);
+            Long dob = dobStr != null ? Long.parseLong(dobStr) : null;
 
+      
             // Update users table
-            userDAO.updateUserFields(userId, name, email, mobileNumber, userId);
+            userDAO.updateUserFields(userId, name, email, mobileNumber, modifiedBy);
 
             // Update customers table (DOB & address only)
             customerDAO.updateCustomerProfileFields(userId, dob, address);
@@ -325,26 +327,136 @@ public class CustomerHandler {
         }
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /* GET /customer/analytics/summary */
+    public void analyticSummary(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+    	
+
+        try {
+        	
+
+
+            final TransactionDAO dao   = new TransactionDAO();
+            final PojoJsonConverter converter = new PojoJsonConverter();
+
+            int txnLimit = 5;   // last N transactions
+            // Session
+            SessionData sd = (SessionData) req.getAttribute("sessionData");
+            long userId    = sd.getUserId();
+
+            // 1. accounts + balances
+            List<Account> accounts = dao.getAccounts(userId);
+            double totalBalance = accounts.stream()
+                                          .mapToDouble(Account::getBalance)
+                                          .sum();
+
+            JSONArray accArr = new JSONArray();
+            for (Account a : accounts) {
+                JSONObject j = new JSONObject();
+                j.put("accountNumber", a.getAccountNumber());
+                j.put("balance", a.getBalance());
+                accArr.put(j);
+            }
+
+            // 2. recent transactions
+            List<Transaction> recent = dao.getRecentTransactions(userId, txnLimit);
+            JSONArray txnArr = converter.pojoListToJsonArray(recent);
+
+            // Response
+            JSONObject out = new JSONObject();
+            out.put("userId", userId);
+            out.put("totalBalance", totalBalance);
+            out.put("accounts", accArr);
+            out.put("recentTransactions", txnArr);
+
+            res.setContentType("application/json");
+            res.getWriter().write(out.toString());
+            
+            System.out.println(out.toString());
+
+        } catch (IOException e) {
+            ErrorResponseUtil.send(res, 500,
+                    new ErrorResponse("Error", 500, e.getMessage()));
+        }
+    
+    
+    }
+
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 }
-
-
-
-
-// For customer testing
-// Customer1 : 100000028
-// Pwd:  !ryy5X+F
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
