@@ -14,6 +14,7 @@ import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.sbank.auth.request.validatot.RequestValidator;
 import com.sbank.netbanking.dto.ErrorResponse;
 import com.sbank.netbanking.exceptions.TaskException;
 import com.sbank.netbanking.model.SessionData;
@@ -35,7 +36,7 @@ public class AuthFilter implements Filter {
         SessionService sessionService = new SessionService();
         // CORS setup
         String origin = httpRequest.getHeader("Origin");
-        if ("http://localhost:3002".equals(origin)) {
+        if ("http://localhost:3001".equals(origin)) {
             httpResponse.setHeader("Access-Control-Allow-Origin", origin);
         }
         httpResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
@@ -79,6 +80,19 @@ public class AuthFilter implements Filter {
             SessionData sessionData =  new SessionData();
             sessionData =  sessionService.sessionValidator(sessionId); // Returns session data if valid session exists
 
+            
+            
+            // Request fields validator
+            StringBuilder error = new StringBuilder();
+            if (RequestValidator.isValid(httpRequest, error)) {
+            	httpResponse.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            	httpResponse.getWriter().write("{\"error\": \"" + error.toString() + "\"}");
+                return;
+            }
+        
+
+            
+            
             if (sessionData != null) {
             	request.setAttribute("sessionData", sessionData); // Setting sessionID as request attribute
                 chain.doFilter(request, response);

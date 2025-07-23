@@ -29,6 +29,9 @@ public final class BcryptService {
      * @return hashed password string
      */
     public static String hashPassword(String plainPassword) {
+    	if(plainPassword== null) {
+    		return null;
+    	}
         String hashedPassword = BCrypt.hashpw(plainPassword, BCrypt.gensalt());
         return hashedPassword;
     }

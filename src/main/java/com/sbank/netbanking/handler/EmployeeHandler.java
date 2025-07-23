@@ -397,7 +397,7 @@ public class EmployeeHandler {
 	        Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
 
 	        // Update users table
-	        userDAO.updateUserFields(userId, name, email, mobileNumber, modifiedBy);
+	        userDAO.updateUserFields(userId, name, email, mobileNumber, modifiedBy, null);// Employee can't change the customers password
 
 	        // Role-based updates
 	        if (role.equals("CUSTOMER")) {
@@ -786,10 +786,12 @@ public class EmployeeHandler {
           String name = json.optString("name", null);
           String email = json.optString("email", null);
           Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
-          
+		  String newPassword = json.optString("new_password", null);
+
+		  String hashedNewPassword = BcryptService.hashPassword(newPassword);
 
           // Update users table
-          userDAO.updateUserFields(userId, name, email, mobileNumber, userId);
+          userDAO.updateUserFields(userId, name, email, mobileNumber, userId, hashedNewPassword);
 
 
           JSONObject response = new JSONObject();

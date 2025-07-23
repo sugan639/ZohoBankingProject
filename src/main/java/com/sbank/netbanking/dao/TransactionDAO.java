@@ -92,20 +92,12 @@ public class TransactionDAO {
 
 	            insertTxnStmt.executeUpdate();
 
-	            // 5. Get generated reference number
-	            long referenceNumber;
-	            try (ResultSet keys = insertTxnStmt.getGeneratedKeys()) {
-	                if (keys.next()) {
-	                    referenceNumber = keys.getLong(1);
-	                } else {
-	                    throw new TaskException("Failed to retrieve transaction reference number");
-	                }
-	            }
+	         
+	            
 
 	            // 6. Return POJO
 	            Transaction txn = new Transaction();
 	            txn.setTransactionId(transactionId);
-	            txn.setTransactionReferenceNumber(referenceNumber);
 	            txn.setAccountNumber(toAccountNumber);
 	            txn.setUserId(userId);
 	            txn.setAmount(amount);
@@ -151,7 +143,7 @@ public class TransactionDAO {
 	    		+ " beneficiery_account_number, ifsc_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
 	    long currentTime = System.currentTimeMillis();
-	    long referenceNumber = currentTime;  // Unique per transaction row
+	   
 	    String status;
 	    double updatedBalance;
 
@@ -218,7 +210,7 @@ public class TransactionDAO {
 	            Transaction txn = new Transaction();
 	            txn.setAccountNumber(fromAccountNumber);
 	            txn.setUserId(userId);
-	            txn.setTransactionReferenceNumber(referenceNumber);
+	        
 	            txn.setAmount(amount);
 	            txn.setType(transactionType);
 	            txn.setStatus(TransactionStatus.valueOf(status));
@@ -247,7 +239,7 @@ public class TransactionDAO {
 	
 	
 	public List<Transaction> getFilteredTransactions(
-	        Long txnId, Long refNum, Long accNum, Long customerId,
+	        Long txnId, Long accNum, Long customerId,
 	        Long from, Long to, String type, String status,
 	        int limit, int offset) throws TaskException {
 
@@ -259,8 +251,6 @@ public class TransactionDAO {
 
 	        if (txnId != null) {
 	            transactions.addAll(fetchBySingleParam(conn, "transaction_id", txnId));
-	        } else if (refNum != null) {
-	            transactions.addAll(fetchBySingleParam(conn, "transaction_reference_number", refNum));
 	        } else if (accNum != null) {
 	            transactions.addAll(fetchByAccount(conn, accNum, from, to, type, status, limit, offset));
 	        } else if (customerId != null && from != null && to != null) {
@@ -314,7 +304,7 @@ public class TransactionDAO {
 
 	            while (rs.next()) {
 	                Transaction txn = new Transaction();
-	                txn.setTransactionReferenceNumber(rs.getLong("transaction_reference_number"));
+	            
 	                txn.setTransactionId(rs.getLong("transaction_id"));
 	                txn.setAccountNumber(rs.getLong("account_number"));
 	                txn.setAmount(rs.getDouble("amount"));
@@ -414,7 +404,7 @@ public class TransactionDAO {
 	
 	private Transaction mapTransaction(ResultSet rs) throws SQLException {
 	    Transaction t = new Transaction();
-	    t.setTransactionReferenceNumber(rs.getLong("transaction_reference_number"));
+	
 	    t.setTransactionId(rs.getLong("transaction_id"));
 	    t.setAccountNumber(rs.getLong("account_number"));
 	    t.setAmount(rs.getDouble("amount"));
@@ -566,7 +556,6 @@ public class TransactionDAO {
 	                while (rs.next()) {
 	                    Transaction txn = new Transaction();
 	                    txn.setTransactionId(rs.getLong("transaction_id"));
-	                    txn.setTransactionReferenceNumber(rs.getLong("transaction_reference_number"));
 	                    txn.setAccountNumber(rs.getLong("account_number"));
 	                    txn.setAmount(rs.getDouble("amount"));
 	                    txn.setType(Transaction.TransactionType.valueOf(rs.getString("type")));

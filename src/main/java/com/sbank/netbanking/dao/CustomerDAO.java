@@ -207,7 +207,7 @@ public class CustomerDAO {
             sql.append("address = ?, ");
             params.add(address);
         }
-
+  
         if (params.isEmpty()) return; // No update needed
 
         // Trim the last comma and add WHERE clause

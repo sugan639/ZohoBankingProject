@@ -69,7 +69,7 @@ public class UserDAO {
 
     }
     
-    public void updateUserFields(Long userId, String name, String email, Long mobileNumber, Long modifiedBy) throws TaskException {
+    public void updateUserFields(Long userId, String name, String email, Long mobileNumber, Long modifiedBy, String password) throws TaskException {
         if (name == null && email == null && mobileNumber == null) {
             // Nothing meaningful to update
             return;
@@ -90,6 +90,12 @@ public class UserDAO {
             sql.append("mobile_number = ?, ");
             params.add(mobileNumber);
         }
+        
+        if(password!= null) {
+      	  sql.append("password = ?, ");
+            params.add(password);
+      }
+
 
         sql.append("modified_at = ?, modified_by = ? WHERE user_id = ?");
         params.add(System.currentTimeMillis());

@@ -25,6 +25,7 @@ import com.sbank.netbanking.model.SessionData;
 import com.sbank.netbanking.model.Transaction;
 import com.sbank.netbanking.model.Transaction.TransactionType;
 import com.sbank.netbanking.model.User.Role;
+import com.sbank.netbanking.service.BcryptService;
 import com.sbank.netbanking.service.TransactionService;
 import com.sbank.netbanking.util.ErrorResponseUtil;
 import com.sbank.netbanking.util.PojoJsonConverter;
@@ -76,13 +77,15 @@ public class CustomerHandler {
             String email = json.optString("email", null);
             Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
             String dobStr = json.optString("dob", null);
-           
+            String pwd =  json.optString("new_password", null); // Getting new passwrod from customer
             String address = json.optString("address", null);
             Long dob = dobStr != null ? Long.parseLong(dobStr) : null;
 
+        	String hashedPassword = BcryptService.hashPassword(pwd); // Hashing new password
+
       
             // Update users table
-            userDAO.updateUserFields(userId, name, email, mobileNumber, modifiedBy);
+            userDAO.updateUserFields(userId, name, email, mobileNumber, modifiedBy, hashedPassword);
 
             // Update customers table (DOB & address only)
             customerDAO.updateCustomerProfileFields(userId, dob, address);

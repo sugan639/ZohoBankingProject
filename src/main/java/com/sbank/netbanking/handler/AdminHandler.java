@@ -45,1037 +45,974 @@ public class AdminHandler {
 	// 1. Get admin profile
 	public void getProfile(HttpServletRequest req, HttpServletResponse res) throws TaskException {
 
-		
-		
-	    SessionData sessionData =  new SessionData();
-	    sessionData = (SessionData) req.getAttribute("sessionData");
-        long adminId = sessionData.getUserId();
-        
-      
-      
-        System.out.println("User ID from the session data get profile method: "+adminId);
-        EmployeeDAO employeeDAO = new EmployeeDAO();
-        PojoJsonConverter converter = new PojoJsonConverter();
+		SessionData sessionData = new SessionData();
+		sessionData = (SessionData) req.getAttribute("sessionData");
+		long adminId = sessionData.getUserId();
 
-        try {
-        	
-        	  //Authorising only admin
-    	    UserDAO userDao = new UserDAO();
-            Role role = userDao.getUserById(adminId).getRole();
-            if(role != Role.ADMIN) {
-            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-            	 return;
-            }
-            
-        	Employee admin = employeeDAO.getEmployeeById(adminId);
-            if (admin != null) {
-                JSONObject jsonAdmin = converter.pojoToJson(admin);
-                res.setContentType("application/json");
-                res.getWriter().write(jsonAdmin.toString());
-            } else {
-                res.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                res.getWriter().write("{\"error\":\"Admin not found\", \"code\":404}");
-            }
-        } catch (IOException e) {
-        	  ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-      	            new ErrorResponse("TaskException", 500, e.getMessage()));
-        }
-        
-        
-      }
-    
+		System.out.println("User ID from the session data get profile method: " + adminId);
+		EmployeeDAO employeeDAO = new EmployeeDAO();
+		PojoJsonConverter converter = new PojoJsonConverter();
 
-	
-	
+		try {
+
+			// Authorising only admin
+			UserDAO userDao = new UserDAO();
+			Role role = userDao.getUserById(adminId).getRole();
+			if (role != Role.ADMIN) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+						new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+				return;
+			}
+
+			Employee admin = employeeDAO.getEmployeeById(adminId);
+			if (admin != null) {
+				JSONObject jsonAdmin = converter.pojoToJson(admin);
+				res.setContentType("application/json");
+				res.getWriter().write(jsonAdmin.toString());
+			} else {
+				res.setStatus(HttpServletResponse.SC_NOT_FOUND);
+				res.getWriter().write("{\"error\":\"Admin not found\", \"code\":404}");
+			}
+		} catch (IOException e) {
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					new ErrorResponse("TaskException", 500, e.getMessage()));
+		}
+
+	}
+
 	// 2. GET /admin/branches/{branch_id}
 	public void getBranchById(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-	    try {
+		try {
 
-	    	//Authorization 
-		    SessionData sessionData =  new SessionData();
-		    sessionData = (SessionData) req.getAttribute("sessionData");
-	        long adminId = sessionData.getUserId();
-	    	
-	    	 UserDAO userDao = new UserDAO();
-	            Role role = userDao.getUserById(adminId).getRole();
-	            if(role != Role.ADMIN) {
-	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-	            	 return;
-	            }
-	            
-	            
-	        String branchIdStr = req.getParameter("branchId");
+			// Authorization
+			SessionData sessionData = new SessionData();
+			sessionData = (SessionData) req.getAttribute("sessionData");
+			long adminId = sessionData.getUserId();
 
-	        if (branchIdStr == null || branchIdStr.isEmpty()) {
-	            throw new TaskException("Missing or invalid 'branchId' in query parameters.");
-	        }
+			UserDAO userDao = new UserDAO();
+			Role role = userDao.getUserById(adminId).getRole();
+			if (role != Role.ADMIN) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+						new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+				return;
+			}
 
-	        long branchId;
-	        try {
-	            branchId = Long.parseLong(branchIdStr);
-	        } catch (NumberFormatException e) {
-	            throw new TaskException("Invalid branch ID format. Must be a number.", e);
-	        }
+			String branchIdStr = req.getParameter("branchId");
 
-	       
+			if (branchIdStr == null || branchIdStr.isEmpty()) {
+				throw new TaskException("Missing or invalid 'branchId' in query parameters.");
+			}
 
+			long branchId;
+			try {
+				branchId = Long.parseLong(branchIdStr);
+			} catch (NumberFormatException e) {
+				throw new TaskException("Invalid branch ID format. Must be a number.", e);
+			}
 
-	        Branch branch = new Branch();
-	        BranchDAO branchDao = new BranchDAO();
+			Branch branch = new Branch();
+			BranchDAO branchDao = new BranchDAO();
 
-	        
-	        branch = branchDao.getBranchById(branchId);  // Branch POJO
-	        System.out.println("Branch ID from the GET request data @ getBranch method: "+branchId);
+			branch = branchDao.getBranchById(branchId); // Branch POJO
+			System.out.println("Branch ID from the GET request data @ getBranch method: " + branchId);
 
-	        PojoJsonConverter converter = new PojoJsonConverter();
-	        JSONObject jsonBranch = converter.pojoToJson(branch); // Branch JSON
+			PojoJsonConverter converter = new PojoJsonConverter();
+			JSONObject jsonBranch = converter.pojoToJson(branch); // Branch JSON
 
-	       
-	        res.setContentType("application/json");
-	        res.getWriter().write(jsonBranch.toString());
+			res.setContentType("application/json");
+			res.getWriter().write(jsonBranch.toString());
 
-	    } catch (NumberFormatException e) {
-	        throw new TaskException("Invalid branch ID format", e);
-	    } catch (IOException e) {
-	        throw new TaskException("Failed to write branch response", e);
-	    }
+		} catch (NumberFormatException e) {
+			throw new TaskException("Invalid branch ID format", e);
+		} catch (IOException e) {
+			throw new TaskException("Failed to write branch response", e);
+		}
 	}
 
-	
-	
 	public void getBranchByIfsc(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-	    try {
+		try {
 
-	    	//Authorization 
-		    SessionData sessionData =  new SessionData();
-		    sessionData = (SessionData) req.getAttribute("sessionData");
-	        long adminId = sessionData.getUserId();
-	    	
-	    	 UserDAO userDao = new UserDAO();
-	            Role role = userDao.getUserById(adminId).getRole();
-	            if(role != Role.ADMIN) {
-	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-	            	 return;
-	            }
-	            
-	            
-	        String ifscCode = req.getParameter("ifsccode");
+			// Authorization
+			SessionData sessionData = new SessionData();
+			sessionData = (SessionData) req.getAttribute("sessionData");
+			long adminId = sessionData.getUserId();
 
-	        if (ifscCode == null || ifscCode.isEmpty()) {
-	            throw new TaskException("Missing or invalid 'IFSC code' in query parameters.");
-	        }
+			UserDAO userDao = new UserDAO();
+			Role role = userDao.getUserById(adminId).getRole();
+			if (role != Role.ADMIN) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+						new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+				return;
+			}
 
+			String ifscCode = req.getParameter("ifsccode");
 
-	        Branch branch = new Branch();
-	        BranchDAO branchDao = new BranchDAO();
+			if (ifscCode == null || ifscCode.isEmpty()) {
+				throw new TaskException("Missing or invalid 'IFSC code' in query parameters.");
+			}
 
-	        
-	        branch = branchDao.getBranchByIfsc(ifscCode);  // Branch POJO
-	        System.out.println("Branch ID from the GET request data @ getBranch method: "+ ifscCode);
+			Branch branch = new Branch();
+			BranchDAO branchDao = new BranchDAO();
 
-	        PojoJsonConverter converter = new PojoJsonConverter();
-	        JSONObject jsonBranch = converter.pojoToJson(branch); // Branch JSON
+			branch = branchDao.getBranchByIfsc(ifscCode); // Branch POJO
+			System.out.println("Branch ID from the GET request data @ getBranch method: " + ifscCode);
 
-	       
-	        res.setContentType("application/json");
-	        res.getWriter().write(jsonBranch.toString());
+			PojoJsonConverter converter = new PojoJsonConverter();
+			JSONObject jsonBranch = converter.pojoToJson(branch); // Branch JSON
 
-	    } catch (NumberFormatException e) {
-	        throw new TaskException("Invalid branch ID format", e);
-	    } catch (IOException e) {
-	        throw new TaskException("Failed to write branch response", e);
-	    }
+			res.setContentType("application/json");
+			res.getWriter().write(jsonBranch.toString());
+
+		} catch (NumberFormatException e) {
+			throw new TaskException("Invalid branch ID format", e);
+		} catch (IOException e) {
+			throw new TaskException("Failed to write branch response", e);
+		}
 	}
-	
-	// 3. PATCH /admin/branches     // Working
+
+	// 3. PATCH /admin/branches // Working
 	public void updateBranch(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-	    try {
-	        RequestJsonConverter requestJsonConverter = new RequestJsonConverter();
-	        JSONObject json = requestJsonConverter.convertToJson(req);
+		try {
+			RequestJsonConverter requestJsonConverter = new RequestJsonConverter();
+			JSONObject json = requestJsonConverter.convertToJson(req);
 
-			
-		    SessionData sessionData =  new SessionData();
-		    sessionData = (SessionData) req.getAttribute("sessionData");
-	        long adminId = sessionData.getUserId();		// UserID from session data
-	      
-	      	//Authorization 
-		 	 UserDAO userDao = new UserDAO();
-	            Role role = userDao.getUserById(adminId).getRole();
-	            if(role != Role.ADMIN) {
-	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-	            	 return;
-	            }
-	            
-	        Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
-	      
-	        String ifscCode = json.optString("ifsc_code", null);
-	        String bankName = json.optString("bank_name", null);
-	        String location = json.optString("location", null);
+			SessionData sessionData = new SessionData();
+			sessionData = (SessionData) req.getAttribute("sessionData");
+			long adminId = sessionData.getUserId(); // UserID from session data
 
-	        if (branchId == null ) {
-	            ErrorResponse error = new ErrorResponse("Bad request", 400, "branch_id is required");
-	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST, error);
-	            return;
-	        }
+			// Authorization
+			UserDAO userDao = new UserDAO();
+			Role role = userDao.getUserById(adminId).getRole();
+			if (role != Role.ADMIN) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+						new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+				return;
+			}
 
-	        BranchDAO dao = new BranchDAO();
-	        Branch updatedBranch = dao.updateBranch(branchId, adminId, ifscCode, bankName, location);
+			Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
 
-	        if (updatedBranch != null) {
-	            PojoJsonConverter converter = new PojoJsonConverter();
-	            JSONObject responseJson = converter.pojoToJson(updatedBranch);
-	            res.setContentType("application/json");
-	            res.getWriter().write(responseJson.toString());
-	        } else {
-	            ErrorResponse error = new ErrorResponse("Update Failed", 404, "Branch not found or update unsuccessful");
-	            ErrorResponseUtil.send(res, HttpServletResponse.SC_NOT_FOUND, error);
-	        }
+			String ifscCode = json.optString("ifsc_code", null);
+			String bankName = json.optString("bank_name", null);
+			String location = json.optString("location", null);
 
-	    } catch ( IOException e) {
-	        ErrorResponse error = new ErrorResponse("Server Error", 500, e.getMessage());
-	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error);
-	    }
+			if (branchId == null) {
+				ErrorResponse error = new ErrorResponse("Bad request", 400, "branch_id is required");
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST, error);
+				return;
+			}
+
+			BranchDAO dao = new BranchDAO();
+			Branch updatedBranch = dao.updateBranch(branchId, adminId, ifscCode, bankName, location);
+
+			if (updatedBranch != null) {
+				PojoJsonConverter converter = new PojoJsonConverter();
+				JSONObject responseJson = converter.pojoToJson(updatedBranch);
+				res.setContentType("application/json");
+				res.getWriter().write(responseJson.toString());
+			} else {
+				ErrorResponse error = new ErrorResponse("Update Failed", 404,
+						"Branch not found or update unsuccessful");
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_NOT_FOUND, error);
+			}
+
+		} catch (IOException e) {
+			ErrorResponse error = new ErrorResponse("Server Error", 500, e.getMessage());
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error);
+		}
 	}
 
-	
 	// 4. GET /admin/users/{user_id}
-	public void getUser(HttpServletRequest req, HttpServletResponse res) throws  TaskException {
-		
-	  	//Authorization 
-	    SessionData sessionData =  new SessionData();
-	    sessionData = (SessionData) req.getAttribute("sessionData");
-        long adminId = sessionData.getUserId();
-    	
-    	 UserDAO userDao = new UserDAO();
-            Role role = userDao.getUserById(adminId).getRole();
-            if(role != Role.ADMIN) {
-            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-            	 return;
-            }
-            
-	    String userIdParam = req.getParameter("user_id");
+	public void getUser(HttpServletRequest req, HttpServletResponse res) throws TaskException {
 
-	    long userId;
+		// Authorization
+		SessionData sessionData = new SessionData();
+		sessionData = (SessionData) req.getAttribute("sessionData");
+		long adminId = sessionData.getUserId();
 
-	    try {
-	        userId = Long.parseLong(userIdParam);
-	    } catch (NumberFormatException e) {
-	        ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-	            new ErrorResponse("Bad Request", 400, "Invalid user_id format"));
-	        return;
-	    }
+		UserDAO userDao = new UserDAO();
+		Role role = userDao.getUserById(adminId).getRole();
+		if (role != Role.ADMIN) {
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+					new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+			return;
+		}
 
-	    UserDAO userDAO = new UserDAO(); // Assumed
-	    PojoJsonConverter converter = new PojoJsonConverter();
+		String userIdParam = req.getParameter("user_id");
 
-	    try {
-	        User user = userDAO.getUserById(userId);		// User object to get the role
-            UserMapper userMapper = new UserMapper();
-            UserDTO userDataDto = userMapper.toUserDTO(user);	// DTO to remove the password field
-            
-	        if (userDataDto == null) {
-	            ErrorResponseUtil.send(res, HttpServletResponse.SC_NOT_FOUND,
-	                new ErrorResponse("Not Found", 404, "User not found"));
-	            return;
-	        }
+		long userId;
 
-	        switch (userDataDto.getRole()) {
-	        case CUSTOMER:
-	            CustomerDAO customerDAO = new CustomerDAO();
-	            Customer customer = customerDAO.getCustomerById(userId);
-	            
-	            if (customer != null) {
-	            	System.out.println("customer is not null");
-	                JSONObject custJson = converter.pojoToJson(customer);
-	                res.setContentType("application/json");
-	    	        res.getWriter().write(custJson.toString());	            
-	    	        }
-	            else {
-	            	ErrorResponseUtil.send(res, 404,
-	        	            new ErrorResponse("Input Error", 404, "User not found"));
-	            }
-	            break;
+		try {
+			userId = Long.parseLong(userIdParam);
+		} catch (NumberFormatException e) {
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+					new ErrorResponse("Bad Request", 400, "Invalid user_id format"));
+			return;
+		}
 
-	        case EMPLOYEE:
-	        case ADMIN:
-	            EmployeeDAO employeeDAO = new EmployeeDAO();
-	            Employee employee = employeeDAO.getEmployeeById(userId);
-	            if (employee != null) {
-	                JSONObject empJson = converter.pojoToJson(employee);
-	                res.setContentType("application/json");
-	    	        res.getWriter().write(empJson.toString());
-	    	        }
-	            break;
-	    }
+		UserDAO userDAO = new UserDAO(); // Assumed
+		PojoJsonConverter converter = new PojoJsonConverter();
 
+		try {
+			User user = userDAO.getUserById(userId); // User object to get the role
+			UserMapper userMapper = new UserMapper();
+			UserDTO userDataDto = userMapper.toUserDTO(user); // DTO to remove the password field
 
-	    } catch (IOException e) {
-	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-	            new ErrorResponse("Server Error", 500, e.getMessage()));
-	    }
+			if (userDataDto == null) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_NOT_FOUND,
+						new ErrorResponse("Not Found", 404, "User not found"));
+				return;
+			}
+
+			switch (userDataDto.getRole()) {
+			case CUSTOMER:
+				CustomerDAO customerDAO = new CustomerDAO();
+				Customer customer = customerDAO.getCustomerById(userId);
+
+				if (customer != null) {
+					System.out.println("customer is not null");
+					JSONObject custJson = converter.pojoToJson(customer);
+					res.setContentType("application/json");
+					res.getWriter().write(custJson.toString());
+				} else {
+					ErrorResponseUtil.send(res, 404, new ErrorResponse("Input Error", 404, "User not found"));
+				}
+				break;
+
+			case EMPLOYEE:
+			case ADMIN:
+				EmployeeDAO employeeDAO = new EmployeeDAO();
+				Employee employee = employeeDAO.getEmployeeById(userId);
+				if (employee != null) {
+					JSONObject empJson = converter.pojoToJson(employee);
+					res.setContentType("application/json");
+					res.getWriter().write(empJson.toString());
+				}
+				break;
+			}
+
+		} catch (IOException e) {
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					new ErrorResponse("Server Error", 500, e.getMessage()));
+		}
 	}
-
-
 
 	// 5. PUT /admin/users/update
 	public void updateUser(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-		
-		
-	    RequestJsonConverter jsonConverter = new RequestJsonConverter();
-	    UserDAO userDAO = new UserDAO();
-        EmployeeDAO employeeDAO = new EmployeeDAO();
-	    CustomerDAO customerDAO = new CustomerDAO();
-	    
-	    
 
-	    try {
-	    	
-	      	//Authorization 
-		    SessionData sessionData =  new SessionData();
-		    sessionData = (SessionData) req.getAttribute("sessionData");
-	        long adminId = sessionData.getUserId();
-	    	
-	    	 UserDAO userDao = new UserDAO();
-	            Role authRole = userDao.getUserById(adminId).getRole();
-	            if(authRole != Role.ADMIN) {
-	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-	            	 return;
-	            }
-	            
-	    	
-	        JSONObject json = jsonConverter.convertToJson(req);
+		RequestJsonConverter jsonConverter = new RequestJsonConverter();
+		UserDAO userDAO = new UserDAO();
+		EmployeeDAO employeeDAO = new EmployeeDAO();
+		CustomerDAO customerDAO = new CustomerDAO();
 
-	        if (json == null || json.isEmpty()) {
-	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-	                new ErrorResponse("Bad Request", 400, "Request body is empty"));
-	            return;
-	        }
+		try {
 
-	     
+			// Authorization
+			SessionData sessionData = new SessionData();
+			sessionData = (SessionData) req.getAttribute("sessionData");
+			long adminId = sessionData.getUserId();
 
-	        Long userId = json.has("user_id") ? json.getLong("user_id") : null;
-	        if (userId == null) {
-	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-	                new ErrorResponse("Bad Request", 400, "user_id is required"));
-	            return;
-	        }
-	        long modifiedBy = sessionData.getUserId();
+			UserDAO userDao = new UserDAO();
+			Role authRole = userDao.getUserById(adminId).getRole();
+			if (authRole != Role.ADMIN) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+						new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+				return;
+			}
 
-	        // Fetch role
-	        User user = userDAO.getUserById(userId);
-	        if (user == null) {
-	            ErrorResponseUtil.send(res, HttpServletResponse.SC_NOT_FOUND,
-	                new ErrorResponse("Not Found", 404, "User not found"));
-	            return;
-	        }
+			JSONObject json = jsonConverter.convertToJson(req);
 
-	        String role = user.getRole().name();
+			if (json == null || json.isEmpty()) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Bad Request", 400, "Request body is empty"));
+				return;
+			}
 
-	        // Common fields
-	        String name = json.optString("name", null);
-	        String email = json.optString("email", null);
-	        Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
+			Long userId = json.has("user_id") ? json.getLong("user_id") : null;
+			if (userId == null) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Bad Request", 400, "user_id is required"));
+				return;
+			}
+			long modifiedBy = sessionData.getUserId();
 
-	        // Update users table
-	        userDAO.updateUserFields(userId, name, email, mobileNumber, modifiedBy);
+			// Fetch role
+			User user = userDAO.getUserById(userId);
+			if (user == null) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_NOT_FOUND,
+						new ErrorResponse("Not Found", 404, "User not found"));
+				return;
+			}
 
-	        // Role-based updates
-	        if (role.equals("CUSTOMER")) {
-	            // Validate that no employee-specific fields are present
-	            if (json.has("branch_id")) {
-	                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-	                    new ErrorResponse("Bad Request", 400, "Customers should not have branch_id"));
-	                return;
-	            }
+			String role = user.getRole().name();
 
-	            // Customer-specific fields
-	            String dobStr = json.optString("dob", null);
-	            Long dob = dobStr != null ? Long.parseLong(dobStr) : null;
-	            String address = json.optString("address", null);
-	            Long aadhar = json.has("aadhar_number") ? json.getLong("aadhar_number") : null;
-	            String pan = json.optString("pan_number", null);
+			// Common fields
+			String name = json.optString("name", null);
+			String email = json.optString("email", null);
+			Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
+			String newPassword = json.has("new_password") ? json.getString("new_password") : null;
 
-	            customerDAO.updateCustomerFields(userId, dob, address, aadhar, pan);
+			String hashedPassword = BcryptService.hashPassword(newPassword);
+			
+			// Update users table
+			userDAO.updateUserFields(userId, name, email, mobileNumber, modifiedBy, hashedPassword);
 
-	        } else if (role.equals("EMPLOYEE") || role.equals("ADMIN")) {
-	            // Validate that no customer-specific fields are present
-	            if (json.has("dob") || json.has("address") || json.has("aadhar_number") || json.has("pan_number")) {
-	                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-	                    new ErrorResponse("Bad Request", 400, "Employees/Admins should not have customer-specific fields like dob, address, etc."));
-	                return;
-	            }
+			// Role-based updates
+			if (role.equals("CUSTOMER")) {
+				// Validate that no employee-specific fields are present
+				if (json.has("branch_id")) {
+					ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+							new ErrorResponse("Bad Request", 400, "Customers should not have branch_id"));
+					return;
+				}
 
-	            Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
-	            employeeDAO.updateEmployeeFields(userId, branchId);
-	        }
+				// Customer-specific fields
+				String dobStr = json.optString("dob", null);
+				Long dob = dobStr != null ? Long.parseLong(dobStr) : null;
+				String address = json.optString("address", null);
+				Long aadhar = json.has("aadhar_number") ? json.getLong("aadhar_number") : null;
+				String pan = json.optString("pan_number", null);
 
-	        JSONObject response = new JSONObject();
-	        response.put("message", "User updated successfully");
-	        res.setContentType("application/json");
-	        res.getWriter().write(response.toString());
+				customerDAO.updateCustomerFields(userId, dob, address, aadhar, pan);
 
-	    } catch (IOException e) {
-	        e.printStackTrace();
-	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-	            new ErrorResponse("TaskException", 500, e.getMessage()));
-	    }
+			} else if (role.equals("EMPLOYEE") || role.equals("ADMIN")) {
+				// Validate that no customer-specific fields are present
+				if (json.has("dob") || json.has("address") || json.has("aadhar_number") || json.has("pan_number")) {
+					ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST, new ErrorResponse("Bad Request",
+							400, "Employees/Admins should not have customer-specific fields like dob, address, etc."));
+					return;
+				}
+
+				Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
+				employeeDAO.updateEmployeeFields(userId, branchId);
+			}
+
+			JSONObject response = new JSONObject();
+			response.put("message", "User updated successfully");
+			res.setContentType("application/json");
+			res.getWriter().write(response.toString());
+
+		} catch (IOException e) {
+			e.printStackTrace();
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					new ErrorResponse("TaskException", 500, e.getMessage()));
+		}
 	}
 
-
-	
-	
 	// 6. POST /admin/transactions/deposit
 	public void deposit(HttpServletRequest req, HttpServletResponse res) throws IOException, TaskException {
-	    RequestJsonConverter jsonConverter = new RequestJsonConverter();
-	    PojoJsonConverter pojoConverter = new PojoJsonConverter();
-	    TransactionDAO transactionDAO = new TransactionDAO();
+		RequestJsonConverter jsonConverter = new RequestJsonConverter();
+		PojoJsonConverter pojoConverter = new PojoJsonConverter();
+		TransactionDAO transactionDAO = new TransactionDAO();
 
-	    try {
-	    	
-	    	//Authorization 
-		    SessionData sessionData =  new SessionData();
-		    sessionData = (SessionData) req.getAttribute("sessionData");
-	        long adminId = sessionData.getUserId();
-	    	
-	    	 UserDAO userDao = new UserDAO();
-	            Role authRole = userDao.getUserById(adminId).getRole();
-	            if(authRole != Role.ADMIN) {
-	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-	            	 return;
-	            }
-	            
-	        JSONObject json = jsonConverter.convertToJson(req);
+		try {
 
-	        Long accountNumber = json.has("account_number") ? json.getLong("account_number") : null;
-	        Double amount = json.has("amount") ? json.getDouble("amount") : null;
+			// Authorization
+			SessionData sessionData = new SessionData();
+			sessionData = (SessionData) req.getAttribute("sessionData");
+			long adminId = sessionData.getUserId();
 
-	        System.out.println(accountNumber);
-	        System.out.println(amount);
+			UserDAO userDao = new UserDAO();
+			Role authRole = userDao.getUserById(adminId).getRole();
+			if (authRole != Role.ADMIN) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+						new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+				return;
+			}
 
-	        if (accountNumber == null || amount == null || amount <= 0) {
-	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-	                new ErrorResponse("Bad Request", 400, "account_number and valid amount are required"));
-	            return;
-	        }
+			JSONObject json = jsonConverter.convertToJson(req);
 
-	        // Get session data to track who performed the deposit
-	        long doneBy = sessionData.getUserId();
+			Long accountNumber = json.has("account_number") ? json.getLong("account_number") : null;
+			Double amount = json.has("amount") ? json.getDouble("amount") : null;
 
-	        TransactionType transactionType = TransactionType.DEPOSIT;
-	        
-	        TransactionUtil transactionUtil = new TransactionUtil();
-            long transactionId = transactionUtil.generateTransactionId();
-      
-	        
-	        // Perform deposit and return transaction info
-	        Transaction transaction = transactionDAO.deposit(accountNumber, amount, doneBy, transactionType, transactionId, null, null);
+			System.out.println(accountNumber);
+			System.out.println(amount);
 
-	        JSONObject jsonResp = pojoConverter.pojoToJson(transaction);
-	        jsonResp.put("message", "Deposit successful");
+			if (accountNumber == null || amount == null || amount <= 0) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Bad Request", 400, "account_number and valid amount are required"));
+				return;
+			}
 
-	        res.setContentType("application/json");
-	        res.getWriter().write(jsonResp.toString());
+			// Get session data to track who performed the deposit
+			long doneBy = sessionData.getUserId();
 
-	    } catch (TaskException  e) {
-	        e.printStackTrace();
-	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-	            new ErrorResponse("TaskException", 500, e.getMessage()));
-	       
-	    } catch (SQLException e) {
+			TransactionType transactionType = TransactionType.DEPOSIT;
+
+			TransactionUtil transactionUtil = new TransactionUtil();
+			long transactionId = transactionUtil.generateTransactionId();
+
+			// Perform deposit and return transaction info
+			Transaction transaction = transactionDAO.deposit(accountNumber, amount, doneBy, transactionType,
+					transactionId, null, null);
+
+			JSONObject jsonResp = pojoConverter.pojoToJson(transaction);
+			jsonResp.put("message", "Deposit successful");
+
+			res.setContentType("application/json");
+			res.getWriter().write(jsonResp.toString());
+
+		} catch (TaskException e) {
+			e.printStackTrace();
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					new ErrorResponse("TaskException", 500, e.getMessage()));
+
+		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		     ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-			            new ErrorResponse("TaskException", 500, e.getMessage()));
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					new ErrorResponse("TaskException", 500, e.getMessage()));
 		}
 	}
-	
-	
-	
 
-	
 	// 7. POST /admin/transactions/withdraw
 	public void withdraw(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-	    RequestJsonConverter jsonConverter = new RequestJsonConverter();
-	    PojoJsonConverter pojoConverter = new PojoJsonConverter();
-	    TransactionDAO transactionDAO = new TransactionDAO();
+		RequestJsonConverter jsonConverter = new RequestJsonConverter();
+		PojoJsonConverter pojoConverter = new PojoJsonConverter();
+		TransactionDAO transactionDAO = new TransactionDAO();
 
-	    try {
-	    	
-	    	//Authorization 
-		    SessionData sessionData =  new SessionData();
-		    sessionData = (SessionData) req.getAttribute("sessionData");
-	        long adminId = sessionData.getUserId();
-	    	
-	    	 UserDAO userDao = new UserDAO();
-	            Role authRole = userDao.getUserById(adminId).getRole();
-	            if(authRole != Role.ADMIN) {
-	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-	            	 return;
-	            }
-	            
-	        JSONObject json = jsonConverter.convertToJson(req);
+		try {
 
-	        Long accountNumber = json.has("account_number") ? json.getLong("account_number") : null;
-	        Double amount = json.has("amount") ? json.getDouble("amount") : null;
+			// Authorization
+			SessionData sessionData = new SessionData();
+			sessionData = (SessionData) req.getAttribute("sessionData");
+			long adminId = sessionData.getUserId();
 
-	        if (accountNumber == null || amount == null || amount <= 0) {
-	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-	                new ErrorResponse("Bad Request", 400, "account_number and valid amount are required"));
-	            return;
-	        }
+			UserDAO userDao = new UserDAO();
+			Role authRole = userDao.getUserById(adminId).getRole();
+			if (authRole != Role.ADMIN) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+						new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+				return;
+			}
 
-	        // Get session data to track who performed the withdrawal
-	        long doneBy = sessionData.getUserId();
+			JSONObject json = jsonConverter.convertToJson(req);
 
-	        TransactionType transactionType = TransactionType.WITHDRAWAL;
-	        
-	        // Perform withdrawal and return transaction info
-	        TransactionUtil transactionUtil = new TransactionUtil();
-            long transactionId = transactionUtil.generateTransactionId();
-	        Transaction transaction = transactionDAO.withdraw(accountNumber, amount, doneBy, transactionType, transactionId, null, null);
+			Long accountNumber = json.has("account_number") ? json.getLong("account_number") : null;
+			Double amount = json.has("amount") ? json.getDouble("amount") : null;
 
-	        JSONObject jsonResp = pojoConverter.pojoToJson(transaction);
-	        
+			if (accountNumber == null || amount == null || amount <= 0) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Bad Request", 400, "account_number and valid amount are required"));
+				return;
+			}
 
-	        res.setContentType("application/json");
-	        res.getWriter().write(jsonResp.toString());
+			// Get session data to track who performed the withdrawal
+			long doneBy = sessionData.getUserId();
 
-	    } catch (IOException e) {
-	        e.printStackTrace();
-	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-	            new ErrorResponse("TaskException", 500, e.getMessage()));
-	    } catch (SQLException e) {
+			TransactionType transactionType = TransactionType.WITHDRAWAL;
+
+			// Perform withdrawal and return transaction info
+			TransactionUtil transactionUtil = new TransactionUtil();
+			long transactionId = transactionUtil.generateTransactionId();
+			Transaction transaction = transactionDAO.withdraw(accountNumber, amount, doneBy, transactionType,
+					transactionId, null, null);
+
+			JSONObject jsonResp = pojoConverter.pojoToJson(transaction);
+
+			res.setContentType("application/json");
+			res.getWriter().write(jsonResp.toString());
+
+		} catch (IOException e) {
+			e.printStackTrace();
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					new ErrorResponse("TaskException", 500, e.getMessage()));
+		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		     ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-			            new ErrorResponse("TaskException", 500, e.getMessage()));
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					new ErrorResponse("TaskException", 500, e.getMessage()));
 		}
 	}
 
-	
-	
 	// 8. POST /admin/transactions/transfer
 	public void transfer(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-	    RequestJsonConverter jsonConverter = new RequestJsonConverter();
-	    TransactionDAO transactionDAO = new TransactionDAO();
-	    TransactionUtil transactionUtil = new TransactionUtil();
+		RequestJsonConverter jsonConverter = new RequestJsonConverter();
+		TransactionDAO transactionDAO = new TransactionDAO();
+		TransactionUtil transactionUtil = new TransactionUtil();
 
-	    try {
-	    	//Authorization 
-		    SessionData sessionData =  new SessionData();
-		    sessionData = (SessionData) req.getAttribute("sessionData");
-	        long adminId = sessionData.getUserId();
-	    	
-	    	 UserDAO userDao = new UserDAO();
-	            Role authRole = userDao.getUserById(adminId).getRole();
-	            if(authRole != Role.ADMIN) {
-	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-	            	 return;
-	            }
-	        JSONObject json = jsonConverter.convertToJson(req);
+		try {
+			// Authorization
+			SessionData sessionData = new SessionData();
+			sessionData = (SessionData) req.getAttribute("sessionData");
+			long adminId = sessionData.getUserId();
 
-	        Long fromAccount = json.has("from_account") ? json.getLong("from_account") : null;
-	        Long toAccount = json.has("to_account") ? json.getLong("to_account") : null;
-	        Double amount = json.has("amount") ? json.getDouble("amount") : null;
-	        String transferType = json.optString("type", null);  // Expected: "INTRA_BANK" or "INTER_BANK"
-	        String ifscCode = json.optString("ifsc_code", null);  // optional
+			UserDAO userDao = new UserDAO();
+			Role authRole = userDao.getUserById(adminId).getRole();
+			if (authRole != Role.ADMIN) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+						new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+				return;
+			}
+			JSONObject json = jsonConverter.convertToJson(req);
 
-	        if (fromAccount == null || toAccount == null || amount == null || amount <= 0 || transferType == null) {
-	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-	                new ErrorResponse("Bad Request", 400, "Missing or invalid parameters"));
-	            return;
-	        }
+			Long fromAccount = json.has("from_account") ? json.getLong("from_account") : null;
+			Long toAccount = json.has("to_account") ? json.getLong("to_account") : null;
+			Double amount = json.has("amount") ? json.getDouble("amount") : null;
+			String transferType = json.optString("type", null); // Expected: "INTRA_BANK" or "INTER_BANK"
+			String ifscCode = json.optString("ifsc_code", null); // optional
 
-	        long doneBy = sessionData.getUserId();
-	        long transactionId = transactionUtil.generateTransactionId(); // shared for both rows if intra-bank
+			if (fromAccount == null || toAccount == null || amount == null || amount <= 0 || transferType == null) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Bad Request", 400, "Missing or invalid parameters"));
+				return;
+			}
 
-	        if (transferType.equalsIgnoreCase("INTRA_BANK")) {
-	        	
-	        	System.out.println("fromAccount: "+ fromAccount);
-	        	System.out.println("toAccount: "+ fromAccount);
+			long doneBy = sessionData.getUserId();
+			long transactionId = transactionUtil.generateTransactionId(); // shared for both rows if intra-bank
 
-	        	transactionDAO.withdraw(fromAccount, amount, doneBy, TransactionType.INTRA_BANK_DEBIT, transactionId, toAccount, null);
-	            transactionDAO.deposit(toAccount, amount, doneBy, TransactionType.INTRA_BANK_CREDIT, transactionId, fromAccount, null);
-	        } else if (transferType.equalsIgnoreCase("INTER_BANK")) {
-	            transactionDAO.withdraw(fromAccount, amount, doneBy, TransactionType.INTERBANK_DEBIT, transactionId, toAccount, ifscCode);
-	            // No deposit call for inter-bank – credit is done by external bank
-	        } else {
-	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-	                new ErrorResponse("Bad Request", 400, "Invalid transfer type"));
-	            return;
-	        }
+			if (transferType.equalsIgnoreCase("INTRA_BANK")) {
 
-	        // I am the most powerful person onthe entire universe
-	        JSONObject response = new JSONObject();
-	        response.put("message", "Transfer successful");
-	        response.put("transaction_id", transactionId);
+				System.out.println("fromAccount: " + fromAccount);
+				System.out.println("toAccount: " + fromAccount);
 
-	        res.setContentType("application/json");
-	        res.getWriter().write(response.toString());
+				transactionDAO.withdraw(fromAccount, amount, doneBy, TransactionType.INTRA_BANK_DEBIT, transactionId,
+						toAccount, null);
+				transactionDAO.deposit(toAccount, amount, doneBy, TransactionType.INTRA_BANK_CREDIT, transactionId,
+						fromAccount, null);
+			} else if (transferType.equalsIgnoreCase("INTER_BANK")) {
+				transactionDAO.withdraw(fromAccount, amount, doneBy, TransactionType.INTERBANK_DEBIT, transactionId,
+						toAccount, ifscCode);
+				// No deposit call for inter-bank – credit is done by external bank
+			} else {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Bad Request", 400, "Invalid transfer type"));
+				return;
+			}
 
-	    } catch (IOException e) {
-	        e.printStackTrace();
-	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-	            new ErrorResponse("TaskException", 500, e.getMessage()));
-	    }
-	    catch (SQLException e) {
-	        e.printStackTrace();
-	        ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-	            new ErrorResponse("TaskException", 500, e.getMessage()));
-	    }
+			// I am the most powerful person onthe entire universe
+			JSONObject response = new JSONObject();
+			response.put("message", "Transfer successful");
+			response.put("transaction_id", transactionId);
+
+			res.setContentType("application/json");
+			res.getWriter().write(response.toString());
+
+		} catch (IOException e) {
+			e.printStackTrace();
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					new ErrorResponse("TaskException", 500, e.getMessage()));
+		} catch (SQLException e) {
+			e.printStackTrace();
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					new ErrorResponse("TaskException", 500, e.getMessage()));
+		}
 	}
 
-
-    
-    
-    
-    
-    
-    
-    
-    
 	// POST /admin/transactions/query
 	public void queryTransactions(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-	    try {
-	        SessionData sessionData = (SessionData) req.getAttribute("sessionData");
-	        long adminId = sessionData.getUserId();
+		try {
+			SessionData sessionData = (SessionData) req.getAttribute("sessionData");
+			long adminId = sessionData.getUserId();
 
-	        UserDAO userDAO = new UserDAO();
-	        if (userDAO.getUserById(adminId).getRole() != Role.ADMIN) {
-	            throw new TaskException("Unauthorized");
-	        }
+			UserDAO userDAO = new UserDAO();
+			if (userDAO.getUserById(adminId).getRole() != Role.ADMIN) {
+				throw new TaskException("Unauthorized");
+			}
 
-	        RequestJsonConverter converter = new RequestJsonConverter();
-	        JSONObject json = converter.convertToJson(req);
+			RequestJsonConverter converter = new RequestJsonConverter();
+			JSONObject json = converter.convertToJson(req);
 
-	        TransactionService transactionService = new TransactionService();
-	        JSONObject result = transactionService.fetchTransactions(json, Role.ADMIN, adminId);
+			TransactionService transactionService = new TransactionService();
+			JSONObject result = transactionService.fetchTransactions(json, Role.ADMIN, adminId);
 
-	        res.setContentType("application/json");
-	        res.getWriter().write(result.toString());
+			res.setContentType("application/json");
+			res.getWriter().write(result.toString());
 
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	        ErrorResponseUtil.send(res, 500, new ErrorResponse("Error", 500, e.getMessage()));
-	    }
+		} catch (Exception e) {
+			e.printStackTrace();
+			ErrorResponseUtil.send(res, 500, new ErrorResponse("Error", 500, e.getMessage()));
+		}
 	}
 
-	
+	// POST /admin/customer/account
+	public void createAccount(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+		RequestJsonConverter jsonConverter = new RequestJsonConverter();
+		PojoJsonConverter pojoConverter = new PojoJsonConverter();
+		AccountDAO accountDAO = new AccountDAO();
+		UserDAO userDAO = new UserDAO();
 
-    
-    
-    
-    
- // POST /admin/customer/account
-    public void createAccount(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-        RequestJsonConverter jsonConverter = new RequestJsonConverter();
-        PojoJsonConverter pojoConverter = new PojoJsonConverter();
-        AccountDAO accountDAO = new AccountDAO();
-        UserDAO userDAO = new UserDAO();
+		try {
+			// Authorization
+			SessionData sessionData = new SessionData();
+			sessionData = (SessionData) req.getAttribute("sessionData");
+			long adminId = sessionData.getUserId();
 
-        try {
-        	//Authorization 
-		    SessionData sessionData =  new SessionData();
-		    sessionData = (SessionData) req.getAttribute("sessionData");
-	        long adminId = sessionData.getUserId();
-	    	
-	    	 UserDAO userDao = new UserDAO();
-	            Role authRole = userDao.getUserById(adminId).getRole();
-	            if(authRole != Role.ADMIN) {
-	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-	            	 return;
-	            }
-            JSONObject json = jsonConverter.convertToJson(req);
+			UserDAO userDao = new UserDAO();
+			Role authRole = userDao.getUserById(adminId).getRole();
+			if (authRole != Role.ADMIN) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+						new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+				return;
+			}
+			JSONObject json = jsonConverter.convertToJson(req);
 
-            Long userId = json.has("user_id") ? json.getLong("user_id") : null;
-            Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
-            Double initialBalance = json.has("balance") ? json.getDouble("balance") : 0.0;
+			Long userId = json.has("user_id") ? json.getLong("user_id") : null;
+			Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
+			Double initialBalance = json.has("balance") ? json.getDouble("balance") : 0.0;
 
-            if (userId == null || branchId == null) {
-                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                    new ErrorResponse("Bad Request", 400, "user_id and branch_id are required"));
-                return;
-            }
+			if (userId == null || branchId == null) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Bad Request", 400, "user_id and branch_id are required"));
+				return;
+			}
 
-            // Validate user is a customer
-            User user = userDAO.getUserById(userId);
-            if (user == null || !user.getRole().name().equals("CUSTOMER")) {
-                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                    new ErrorResponse("Bad Request", 400, "Account can only be created for customers"));
-                return;
-            }
+			// Validate user is a customer
+			User user = userDAO.getUserById(userId);
+			if (user == null || !user.getRole().name().equals("CUSTOMER")) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Bad Request", 400, "Account can only be created for customers"));
+				return;
+			}
 
-            // Get admin ID from session (created_by, modified_by)
-            long createdBy = sessionData.getUserId();
+			// Get admin ID from session (created_by, modified_by)
+			long createdBy = sessionData.getUserId();
 
-            // Create the account
-            Account account = accountDAO.createCustomerAccount(userId, branchId, initialBalance, createdBy);
+			// Create the account
+			Account account = accountDAO.createCustomerAccount(userId, branchId, initialBalance, createdBy);
 
-            // Return created account
-            JSONObject jsonResponse = pojoConverter.pojoToJson(account);
-            jsonResponse.put("message", "Account created successfully");
+			// Return created account
+			JSONObject jsonResponse = pojoConverter.pojoToJson(account);
+			jsonResponse.put("message", "Account created successfully");
 
-            res.setContentType("application/json");
-            res.getWriter().write(jsonResponse.toString());
+			res.setContentType("application/json");
+			res.getWriter().write(jsonResponse.toString());
 
-        } catch (IOException  e) {
-            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                new ErrorResponse("TaskException", 500, e.getMessage()));
-        }
-    }
+		} catch (IOException e) {
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					new ErrorResponse("TaskException", 500, e.getMessage()));
+		}
+	}
 
-    
-    
-    
-    
-    // 10. POST /admin/enew-mployee
-    public void addEmployee(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-        RequestJsonConverter jsonConverter = new RequestJsonConverter();
-        PojoJsonConverter pojoConverter = new PojoJsonConverter();
-        EmployeeDAO employeeDAO = new EmployeeDAO();
-        RandomPasswordGenerator randomPassword = new RandomPasswordGenerator();
+	// 10. POST /admin/enew-mployee
+	public void addEmployee(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+		RequestJsonConverter jsonConverter = new RequestJsonConverter();
+		PojoJsonConverter pojoConverter = new PojoJsonConverter();
+		EmployeeDAO employeeDAO = new EmployeeDAO();
+		RandomPasswordGenerator randomPassword = new RandomPasswordGenerator();
 
-        try {
-        	
-        	//Authorization 
-		    SessionData sessionData =  new SessionData();
-		    sessionData = (SessionData) req.getAttribute("sessionData");
-	        long adminId = sessionData.getUserId();
-	    	
-	    	 UserDAO userDao = new UserDAO();
-	            Role authRole = userDao.getUserById(adminId).getRole();
-	            if(authRole != Role.ADMIN) {
-	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-	            	 return;
-	            }
-	            
-            // Get JSON from request
-            JSONObject json = jsonConverter.convertToJson(req);
+		try {
 
-            // Required fields
-            String name = json.optString("name", null);
-            String email = json.optString("email", null);
-            Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
-            Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
-            Role role = Role.valueOf(json.optString("role", "EMPLOYEE").toUpperCase());
-            
-            // Generate secure password
-            String password = randomPassword.generateRandomPassword(8);
-            String hashedPassword = BcryptService.hashPassword(password);
+			// Authorization
+			SessionData sessionData = new SessionData();
+			sessionData = (SessionData) req.getAttribute("sessionData");
+			long adminId = sessionData.getUserId();
 
-            // Get admin ID from session for tracking
-            long createdBy = sessionData.getUserId();
+			UserDAO userDao = new UserDAO();
+			Role authRole = userDao.getUserById(adminId).getRole();
+			if (authRole != Role.ADMIN) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+						new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+				return;
+			}
 
-            // Validate role
-            if (!role.equals(Role.ADMIN) && !role.equals(Role.EMPLOYEE)) {
-                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                    new ErrorResponse("Bad Request", 400, "Role must be either 'ADMIN' or 'EMPLOYEE'"));
-                return;
-            }
+			// Get JSON from request
+			JSONObject json = jsonConverter.convertToJson(req);
 
-            // Validate required fields
-            if (name == null || email == null || mobileNumber == null || branchId == null) {
-                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                        new ErrorResponse("Bad Request", 400, "All fields are required"));
-                return;
-            }
-            
-            
+			// Required fields
+			String name = json.optString("name", null);
+			String email = json.optString("email", null);
+			Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
+			Long branchId = json.has("branch_id") ? json.getLong("branch_id") : null;
+			Role role = Role.valueOf(json.optString("role", "EMPLOYEE").toUpperCase());
 
-            // Save to DB
-            Employee employee = employeeDAO.addNewEmployee(name, hashedPassword, email, mobileNumber, branchId, role, createdBy);
+			// Generate secure password
+			String password = randomPassword.generateRandomPassword(8);
+			String hashedPassword = BcryptService.hashPassword(password);
 
-            // Convert to JSON and return
-            JSONObject responseJson = pojoConverter.pojoToJson(employee);
-            responseJson.put("message", "User added successfully");
-            responseJson.put("initial_password", password); //  Include password ONLY HERE
+			// Get admin ID from session for tracking
+			long createdBy = sessionData.getUserId();
 
-            res.setContentType("application/json");
-            res.getWriter().write(responseJson.toString());
+			// Validate role
+			if (!role.equals(Role.ADMIN) && !role.equals(Role.EMPLOYEE)) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Bad Request", 400, "Role must be either 'ADMIN' or 'EMPLOYEE'"));
+				return;
+			}
 
-        } catch (IOException e) {
-        	 e.printStackTrace();
-            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    new ErrorResponse("TaskException", 500, e.getMessage()));
-            
-        }
-    }
-    
-    
-    
-    
- // POST /admin/customer
-    public void addCustomer(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-        RequestJsonConverter jsonConverter = new RequestJsonConverter();
-        PojoJsonConverter pojoConverter = new PojoJsonConverter();
-        CustomerDAO customerDAO = new CustomerDAO();
-        RandomPasswordGenerator passwordGenerator = new RandomPasswordGenerator();
+			// Validate required fields
+			if (name == null || email == null || mobileNumber == null || branchId == null) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Bad Request", 400, "All fields are required"));
+				return;
+			}
 
-        try {
-        	//Authorization 
-		    SessionData sessionData =  new SessionData();
-		    sessionData = (SessionData) req.getAttribute("sessionData");
-	        long adminId = sessionData.getUserId();
-	    	
-	    	 UserDAO userDao = new UserDAO();
-	            Role authRole = userDao.getUserById(adminId).getRole();
-	            if(authRole != Role.ADMIN) {
-	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-	            	 return;
-	            }
-            // Extract JSON from request
-            JSONObject json = jsonConverter.convertToJson(req);
+			// Save to DB
+			Employee employee = employeeDAO.addNewEmployee(name, hashedPassword, email, mobileNumber, branchId, role,
+					createdBy);
 
-            // Get session data (to know who created the customer)
-            long createdBy = sessionData.getUserId();
+			// Convert to JSON and return
+			JSONObject responseJson = pojoConverter.pojoToJson(employee);
+			responseJson.put("message", "User added successfully");
+			responseJson.put("initial_password", password); // Include password ONLY HERE
 
-            // Required fields from request
-            String name = json.optString("name", null);
-            String email = json.optString("email", null);
-            String dobString = json.optString("dob", null); // format: yyyy-MM-dd
-            String address = json.optString("address", null);
-            Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
-            Long aadharNumber = json.has("aadhar_number") ? json.getLong("aadhar_number") : null;
-            String panNumber = json.optString("pan_number", null);
-            String role = "CUSTOMER";
+			res.setContentType("application/json");
+			res.getWriter().write(responseJson.toString());
 
-            // Generate random password
-            String password = passwordGenerator.generateRandomPassword(8);
-            
-            String hashedPassword = BcryptService.hashPassword(password);
-            
-            if (name == null || email == null || dobString == null || address == null || 
-                mobileNumber == null || aadharNumber == null || panNumber == null) {
-                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                    new ErrorResponse("Bad Request", 400, "All fields are required"));
-                return;
-            }
+		} catch (IOException e) {
+			e.printStackTrace();
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					new ErrorResponse("TaskException", 500, e.getMessage()));
 
-            // Convert string DOB to epoch millis
+		}
+	}
 
-            	long dobMillis = Long.parseLong(dobString);
+	// POST /admin/customer
+	public void addCustomer(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+		RequestJsonConverter jsonConverter = new RequestJsonConverter();
+		PojoJsonConverter pojoConverter = new PojoJsonConverter();
+		CustomerDAO customerDAO = new CustomerDAO();
+		RandomPasswordGenerator passwordGenerator = new RandomPasswordGenerator();
 
-            // Save to DB
-            NewCustomer customer = customerDAO.addNewCustomer(name, hashedPassword, email, mobileNumber, dobMillis,
-                                                        address, aadharNumber, panNumber, createdBy, role);
+		try {
+			// Authorization
+			SessionData sessionData = new SessionData();
+			sessionData = (SessionData) req.getAttribute("sessionData");
+			long adminId = sessionData.getUserId();
 
-            // Convert response
-            customer.setPassword(password);  // setting plain new password for new customer
-            JSONObject jsonResponse = pojoConverter.pojoToJson(customer);
-            jsonResponse.put("message", "Customer and user added successfully");
+			UserDAO userDao = new UserDAO();
+			Role authRole = userDao.getUserById(adminId).getRole();
+			if (authRole != Role.ADMIN) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+						new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+				return;
+			}
+			// Extract JSON from request
+			JSONObject json = jsonConverter.convertToJson(req);
 
-            res.setContentType("application/json");
-            res.getWriter().write(jsonResponse.toString());
+			// Get session data (to know who created the customer)
+			long createdBy = sessionData.getUserId();
 
-        } catch (IOException e) {
-        	e.printStackTrace();
-            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                new ErrorResponse("TaskException", 500, e.getMessage()));
-        }
-    }
+			// Required fields from request
+			String name = json.optString("name", null);
+			String email = json.optString("email", null);
+			String dobString = json.optString("dob", null); // format: yyyy-MM-dd
+			String address = json.optString("address", null);
+			Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
+			Long aadharNumber = json.has("aadhar_number") ? json.getLong("aadhar_number") : null;
+			String panNumber = json.optString("pan_number", null);
+			String role = "CUSTOMER";
 
-    
- // 11. PUT /admin/account/status
-    public void updateAccountStatus(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-        RequestJsonConverter jsonConverter = new RequestJsonConverter();
-        AccountDAO accountDAO = new AccountDAO();
+			// Generate random password
+			String password = passwordGenerator.generateRandomPassword(8);
 
-        try {
-        	//Authorization 
-		    SessionData sessionData =  new SessionData();
-		    sessionData = (SessionData) req.getAttribute("sessionData");
-	        long adminId = sessionData.getUserId();
-	    	
-	    	 UserDAO userDao = new UserDAO();
-	            Role authRole = userDao.getUserById(adminId).getRole();
-	            if(authRole != Role.ADMIN) {
-	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-	            	 return;
-	            }
-            JSONObject json = jsonConverter.convertToJson(req);
+			String hashedPassword = BcryptService.hashPassword(password);
 
-            Long accountNumber = json.has("account_number") ? json.getLong("account_number") : null;
-            String operation = json.optString("operation", "").toUpperCase();
+			if (name == null || email == null || dobString == null || address == null || mobileNumber == null
+					|| aadharNumber == null || panNumber == null) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Bad Request", 400, "All fields are required"));
+				return;
+			}
 
-            if (accountNumber == null || operation.isEmpty()) {
-                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                        new ErrorResponse("Bad Request", 400, "account_number and operation are required"));
-                return;
-            }
+			// Convert string DOB to epoch millis
 
-            // Get modifier (admin) from session
-            long modifiedBy = sessionData.getUserId();
+			long dobMillis = Long.parseLong(dobString);
 
-            switch (operation) {
-                case "ACTIVATE":
-                	accountDAO.changeAccountStatus(accountNumber, "ACTIVE", modifiedBy);
-                    break;
-                case "DEACTIVATE":
-                	accountDAO.changeAccountStatus(accountNumber, "INACTIVE", modifiedBy);
-                    break;
-                case "DELETE":
-                	accountDAO.deleteAccount(accountNumber);
-                    break;
-                default:
-                    ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                            new ErrorResponse("Bad Request", 400, "Invalid operation. Use ACTIVATE, INACTIVATE, or DELETE."));
-                    return;
-            }
+			// Save to DB
+			NewCustomer customer = customerDAO.addNewCustomer(name, hashedPassword, email, mobileNumber, dobMillis,
+					address, aadharNumber, panNumber, createdBy, role);
 
-            JSONObject response = new JSONObject();
-            response.put("message", "Account " + operation.toLowerCase() + "d successfully");
-            res.setContentType("application/json");
-            res.getWriter().write(response.toString());
+			// Convert response
+			customer.setPassword(password); // setting plain new password for new customer
+			JSONObject jsonResponse = pojoConverter.pojoToJson(customer);
+			jsonResponse.put("message", "Customer and user added successfully");
 
-        } catch (IOException e) {
-            e.printStackTrace();
-            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    new ErrorResponse("Server Error", 500, e.getMessage()));
-        }
-    }
+			res.setContentType("application/json");
+			res.getWriter().write(jsonResponse.toString());
 
-    
- // POST /admin/branches
-    public void createBranch(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-        RequestJsonConverter jsonConverter = new RequestJsonConverter();
-        PojoJsonConverter pojoConverter = new PojoJsonConverter();
-        BranchDAO branchDAO = new BranchDAO();
+		} catch (IOException e) {
+			e.printStackTrace();
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					new ErrorResponse("TaskException", 500, e.getMessage()));
+		}
+	}
 
-        try {
-            // Authorization 	
-            SessionData sessionData = (SessionData) req.getAttribute("sessionData");
-            long adminId = sessionData.getUserId();
+	// 11. PUT /admin/account/status
+	public void updateAccountStatus(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+		RequestJsonConverter jsonConverter = new RequestJsonConverter();
+		AccountDAO accountDAO = new AccountDAO();
 
-            UserDAO userDao = new UserDAO();
-            Role authRole = userDao.getUserById(adminId).getRole();
-            if (authRole != Role.ADMIN) {
-                ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-                        new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-                return;
-            }
+		try {
+			// Authorization
+			SessionData sessionData = new SessionData();
+			sessionData = (SessionData) req.getAttribute("sessionData");
+			long adminId = sessionData.getUserId();
 
-            JSONObject json = jsonConverter.convertToJson(req);
+			UserDAO userDao = new UserDAO();
+			Role authRole = userDao.getUserById(adminId).getRole();
+			if (authRole != Role.ADMIN) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+						new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+				return;
+			}
+			JSONObject json = jsonConverter.convertToJson(req);
 
-            // Handle null JSON body
-            if (json == null) {
-                res.setStatus(HttpServletResponse.SC_NO_CONTENT); // or SC_BAD_REQUEST (400) depending on API spec
-                return;
-            }
+			Long accountNumber = json.has("account_number") ? json.getLong("account_number") : null;
+			String operation = json.optString("operation", "").toUpperCase();
 
-            String newAdminIdString = json.optString("new_admin_id");
-            String ifscCode = json.optString("ifsc_code");
-            String bankName = json.optString("bank_name");
-            String location = json.optString("location");
+			if (accountNumber == null || operation.isEmpty()) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Bad Request", 400, "account_number and operation are required"));
+				return;
+			}
 
-            if (newAdminIdString == null || bankName == null || bankName.isEmpty() || location == null || location.isEmpty()) {
-                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                        new ErrorResponse("Bad Request", 400, "bank_name and location are required"));
-                return;
-            }
+			// Get modifier (admin) from session
+			long modifiedBy = sessionData.getUserId();
 
-            // Generate IFSC code if not provided
-            if (ifscCode == null || ifscCode.isEmpty()) {
-                BranchUtil branchUtil = new BranchUtil(); 
-                ifscCode = branchUtil.generateIfscCode(bankName, location);
-            }
+			switch (operation) {
+			case "ACTIVATE":
+				accountDAO.changeAccountStatus(accountNumber, "ACTIVE", modifiedBy);
+				break;
+			case "DEACTIVATE":
+				accountDAO.changeAccountStatus(accountNumber, "INACTIVE", modifiedBy);
+				break;
+			case "DELETE":
+				accountDAO.deleteAccount(accountNumber);
+				break;
+			default:
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST, new ErrorResponse("Bad Request", 400,
+						"Invalid operation. Use ACTIVATE, INACTIVATE, or DELETE."));
+				return;
+			}
 
-            Long newAdminId = Long.parseLong(newAdminIdString);
+			JSONObject response = new JSONObject();
+			response.put("message", "Account " + operation.toLowerCase() + "d successfully");
+			res.setContentType("application/json");
+			res.getWriter().write(response.toString());
 
-            Branch branch = new Branch();
-            branch.setAdminId(newAdminId);
-            branch.setIfscCode(ifscCode);
-            branch.setBankName(bankName);
-            branch.setLocation(location);
+		} catch (IOException e) {
+			e.printStackTrace();
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					new ErrorResponse("Server Error", 500, e.getMessage()));
+		}
+	}
 
-            // Create the branch
-            Branch createdBranch = branchDAO.createBranch(branch, adminId);
+	// POST /admin/branches
+	public void createBranch(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+		RequestJsonConverter jsonConverter = new RequestJsonConverter();
+		PojoJsonConverter pojoConverter = new PojoJsonConverter();
+		BranchDAO branchDAO = new BranchDAO();
 
-            JSONObject responseJson = pojoConverter.pojoToJson(createdBranch);
-            responseJson.put("message", "Branch created successfully");
+		try {
+			// Authorization
+			SessionData sessionData = (SessionData) req.getAttribute("sessionData");
+			long adminId = sessionData.getUserId();
 
-            res.setContentType("application/json");
-            res.getWriter().write(responseJson.toString());
+			UserDAO userDao = new UserDAO();
+			Role authRole = userDao.getUserById(adminId).getRole();
+			if (authRole != Role.ADMIN) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+						new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+				return;
+			}
 
-        } catch (IOException e) {
-            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    new ErrorResponse("Error", 500, e.getMessage()));
-        }
-    }
+			JSONObject json = jsonConverter.convertToJson(req);
 
- // GET /admin/accounts
-    public void getAccountDetails(HttpServletRequest req, HttpServletResponse res) throws TaskException {
-        AccountDAO accountDAO = new AccountDAO();
-        PojoJsonConverter converter = new PojoJsonConverter();
+			// Handle null JSON body
+			if (json == null) {
+				res.setStatus(HttpServletResponse.SC_NO_CONTENT); // or SC_BAD_REQUEST (400) depending on API spec
+				return;
+			}
 
-        try {
-        	//Authorization 
-		    SessionData sessionData =  new SessionData();
-		    sessionData = (SessionData) req.getAttribute("sessionData");
-	        long adminId = sessionData.getUserId();
-	    	
-	    	 UserDAO userDao = new UserDAO();
-	            Role authRole = userDao.getUserById(adminId).getRole();
-	            if(authRole != Role.ADMIN) {
-	            	 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
-	                         new ErrorResponse("Unauthorized", 403, "Permission Denied"));
-	            	 return;
-	            }
-            String accountNumParam = req.getParameter("account_number");
-            String customerIdParam = req.getParameter("customer_id");
+			String newAdminIdString = json.optString("new_admin_id");
+			String ifscCode = json.optString("ifsc_code");
+			String bankName = json.optString("bank_name");
+			String location = json.optString("location");
 
-            List<Account> accounts = new ArrayList<>();
+			if (newAdminIdString == null || bankName == null || bankName.isEmpty() || location == null
+					|| location.isEmpty()) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Bad Request", 400, "bank_name and location are required"));
+				return;
+			}
 
-            if (accountNumParam != null) {
-                // Fetch by account_number
-                long accountNumber = Long.parseLong(accountNumParam);
-                Account acc = accountDAO.getAccountByNumber(accountNumber);
-                if (acc != null) {
-                    accounts.add(acc);
-                }
-            } else if (customerIdParam != null) {
-                // Fetch all accounts by customer_id
-                long customerId = Long.parseLong(customerIdParam);
-                accounts = accountDAO.getAccountsByUserId(customerId);
-            } else {
-                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                        new ErrorResponse("Bad Request", 400, "Provide either account_number or customer_id"));
-                return;
-            }
+			// Generate IFSC code if not provided
+			if (ifscCode == null || ifscCode.isEmpty()) {
+				BranchUtil branchUtil = new BranchUtil();
+				ifscCode = branchUtil.generateIfscCode(bankName, location);
+			}
 
-            JSONArray jsonArray = new JSONArray();
-            for (Account acc : accounts) {
-                jsonArray.put(converter.pojoToJson(acc));
-            }
+			Long newAdminId = Long.parseLong(newAdminIdString);
 
-            JSONObject response = new JSONObject();
-            response.put("accounts", jsonArray);
+			Branch branch = new Branch();
+			branch.setAdminId(newAdminId);
+			branch.setIfscCode(ifscCode);
+			branch.setBankName(bankName);
+			branch.setLocation(location);
 
-            res.setContentType("application/json");
-            res.getWriter().write(response.toString());
+			// Create the branch
+			Branch createdBranch = branchDAO.createBranch(branch, adminId);
 
-        } catch (NumberFormatException e) {
-            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                    new ErrorResponse("Bad Request", 400, "Invalid number format"));
-        } catch (IOException e) {
-            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    new ErrorResponse("Error", 500, e.getMessage()));
-        }
-    }
+			JSONObject responseJson = pojoConverter.pojoToJson(createdBranch);
+			responseJson.put("message", "Branch created successfully");
 
+			res.setContentType("application/json");
+			res.getWriter().write(responseJson.toString());
 
-   
+		} catch (IOException e) {
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					new ErrorResponse("Error", 500, e.getMessage()));
+		}
+	}
+
+	// GET /admin/accounts
+	public void getAccountDetails(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+		AccountDAO accountDAO = new AccountDAO();
+		PojoJsonConverter converter = new PojoJsonConverter();
+
+		try {
+			// Authorization
+			SessionData sessionData = new SessionData();
+			sessionData = (SessionData) req.getAttribute("sessionData");
+			long adminId = sessionData.getUserId();
+
+			UserDAO userDao = new UserDAO();
+			Role authRole = userDao.getUserById(adminId).getRole();
+			if (authRole != Role.ADMIN) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+						new ErrorResponse("Unauthorized", 403, "Permission Denied"));
+				return;
+			}
+			String accountNumParam = req.getParameter("account_number");
+			String customerIdParam = req.getParameter("customer_id");
+
+			List<Account> accounts = new ArrayList<>();
+
+			if (accountNumParam != null) {
+				// Fetch by account_number
+				long accountNumber = Long.parseLong(accountNumParam);
+				Account acc = accountDAO.getAccountByNumber(accountNumber);
+				if (acc != null) {
+					accounts.add(acc);
+				}
+			} else if (customerIdParam != null) {
+				// Fetch all accounts by customer_id
+				long customerId = Long.parseLong(customerIdParam);
+				accounts = accountDAO.getAccountsByUserId(customerId);
+			} else {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Bad Request", 400, "Provide either account_number or customer_id"));
+				return;
+			}
+
+			JSONArray jsonArray = new JSONArray();
+			for (Account acc : accounts) {
+				jsonArray.put(converter.pojoToJson(acc));
+			}
+
+			JSONObject response = new JSONObject();
+			response.put("accounts", jsonArray);
+
+			res.setContentType("application/json");
+			res.getWriter().write(response.toString());
+
+		} catch (NumberFormatException e) {
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+					new ErrorResponse("Bad Request", 400, "Invalid number format"));
+		} catch (IOException e) {
+			ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					new ErrorResponse("Error", 500, e.getMessage()));
+		}
+	}
 
 }
