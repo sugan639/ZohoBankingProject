@@ -36,10 +36,10 @@ public class AuthFilter implements Filter {
         SessionService sessionService = new SessionService();
         // CORS setup
         String origin = httpRequest.getHeader("Origin");
-        if ("http://localhost:3001".equals(origin)) {
+        if ("http://localhost:3003".equals(origin)) {
             httpResponse.setHeader("Access-Control-Allow-Origin", origin);
         }
-        httpResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        httpResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELE		System.out.print(\"The maximum product subarray is: \"+answer);TE, OPTIONS");
         httpResponse.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
         httpResponse.setHeader("Access-Control-Allow-Credentials", "true");
 
@@ -54,9 +54,7 @@ public class AuthFilter implements Filter {
 		String formattedTime = istTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
 		System.out.println("Intercepted path: " + path + " at IST time: " + formattedTime);
-        
-// I am the most powerful person onthe entire universe. ans i can do anything
-		
+        	
 		
         try {
             if (isPublicRoute(path)) {
@@ -83,13 +81,15 @@ public class AuthFilter implements Filter {
             
             
             // Request fields validator
-            StringBuilder error = new StringBuilder();
-            if (RequestValidator.isValid(httpRequest, error)) {
-            	httpResponse.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            	httpResponse.getWriter().write("{\"error\": \"" + error.toString() + "\"}");
-                return;
-            }
+//            StringBuilder error = new StringBuilder();
+//            if (RequestValidator.isValid(httpRequest, error)) {
+//            	httpResponse.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+//            	httpResponse.getWriter().write("{\"error\": \"" + error.toString() + "\"}");
+//                return;
+//            }
         
+        
+           
 
             
             
