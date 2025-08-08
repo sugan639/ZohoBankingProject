@@ -5,6 +5,7 @@ public class SessionData {
     private String sessionID;
     private long startTime;
     private long expiryDuration;
+    private long id;
 	 
 
 
@@ -40,7 +41,32 @@ public class SessionData {
 	public void setExpiryDuration(long expiryDuration) {
 		this.expiryDuration = expiryDuration;
 	}
+	
+	
+	public long getId() {
+		return id;
+	}
 
+	public void setId(long id) {
+		this.id = id;
+	}
+
+
+	
+
+	@Override
+	public String toString() {
+		
+		String session =  "Session ID: " + sessionID +"\n " +
+						  "UserId: " + userId + " \n"+
+						  "Start Time: " + startTime + "\n "+
+						  "Expiry duration: " +  expiryDuration;
+				
+				
+			
+				
+		return session;
+	}
 
 
 

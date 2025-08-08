@@ -16,4 +16,14 @@ public class AppConstants {
     public static final Level LOG_LEVEL = Level.INFO;
 
     // Add other constants here
+    
+    // Redis keys
+    public static final String SESSION_DATA_KEY = "sessionDataCache";
+    public static final String ENCRYPTOR_SECRET_KEY = " mSuperSecretKey";
+	public static final String BANK_NAME = "ZOHO";
+	
+    public static final String HMAC_ALGO = "HmacSHA256";
+
+
+    
 }

@@ -15,6 +15,6 @@ public class AppInitializer implements ServletContextListener {
 
         LogConfig.configure(); // MUST be called
         logger.info("Logging initialized.");
-        System.out.println("Logging initialized.");
+        System.out.println("Server refreshed.");
     }
 }

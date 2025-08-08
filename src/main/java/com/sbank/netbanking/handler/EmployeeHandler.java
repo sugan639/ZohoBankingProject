@@ -395,9 +395,10 @@ public class EmployeeHandler {
 	        String name = json.optString("name", null);
 	        String email = json.optString("email", null);
 	        Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
+    	    Boolean allowMultipleSession = json.has("multiple_session")? json.getBoolean("multiple_sessions"): false;
 
 	        // Update users table
-	        userDAO.updateUserFields(userId, name, email, mobileNumber, modifiedBy, null);// Employee can't change the customers password
+	        userDAO.updateUserFields(userId, name, email, mobileNumber, modifiedBy, null, allowMultipleSession);// Employee can't change the customers password
 
 	        // Role-based updates
 	        if (role.equals("CUSTOMER")) {
@@ -787,11 +788,12 @@ public class EmployeeHandler {
           String email = json.optString("email", null);
           Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
 		  String newPassword = json.optString("new_password", null);
+   	      Boolean allowMultipleSession = json.has("multiple_session")? json.getBoolean("multiple_sessions"): false;
 
 		  String hashedNewPassword = BcryptService.hashPassword(newPassword);
 
           // Update users table
-          userDAO.updateUserFields(userId, name, email, mobileNumber, userId, hashedNewPassword);
+          userDAO.updateUserFields(userId, name, email, mobileNumber, userId, hashedNewPassword,allowMultipleSession);
 
 
           JSONObject response = new JSONObject();

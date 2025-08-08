@@ -9,6 +9,8 @@ public class UserDTO {
 	    private String email;
 	    private long mobileNumber;
 		private Role role;
+	    private boolean isMultipleSessionAllowed;
+		private boolean firtTimeLogin;
 		
 	    public long getUserId() {
 			return userId;
@@ -41,6 +43,18 @@ public class UserDTO {
 			this.role = role;
 		}
 	
+		public boolean isMultipleSessionAllowed() {
+			return isMultipleSessionAllowed;
+		}
+		public void setMultipleSessionAllowed(boolean isMultipleSessionAllowed) {
+			this.isMultipleSessionAllowed = isMultipleSessionAllowed;
+		}
+		public boolean isFirtTimeLogin() {
+			return firtTimeLogin;
+		}
+		public void setFirtTimeLogin(boolean firtTimeLogin) {
+			this.firtTimeLogin = firtTimeLogin;
+		}
 
 
 

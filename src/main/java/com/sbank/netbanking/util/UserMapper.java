@@ -16,6 +16,8 @@ public class UserMapper {
         dto.setEmail(user.getEmail());
         dto.setMobileNumber(user.getMobileNumber());
         dto.setRole(user.getRole());
+        dto.setMultipleSessionAllowed(user.isMultipleSession());
+        dto.setFirtTimeLogin(user.isFirtTimeLogin());
         
         return dto;
     }

@@ -39,7 +39,6 @@ public class CustomerHandler {
 
         long customerId = sessionData.getUserId();
       
-        System.out.println("User ID from the session data get profile method: "+customerId);
         CustomerDAO customerDAO = new CustomerDAO();
         PojoJsonConverter converter = new PojoJsonConverter();
 
@@ -80,12 +79,14 @@ public class CustomerHandler {
             String pwd =  json.optString("new_password", null); // Getting new passwrod from customer
             String address = json.optString("address", null);
             Long dob = dobStr != null ? Long.parseLong(dobStr) : null;
+    	    Boolean allowMultipleSession = json.has("multiple_sessions")? json.getBoolean("multiple_sessions"): false;
+
 
         	String hashedPassword = BcryptService.hashPassword(pwd); // Hashing new password
 
       
             // Update users table
-            userDAO.updateUserFields(userId, name, email, mobileNumber, modifiedBy, hashedPassword);
+            userDAO.updateUserFields(userId, name, email, mobileNumber, modifiedBy, hashedPassword, allowMultipleSession);
 
             // Update customers table (DOB & address only)
             customerDAO.updateCustomerProfileFields(userId, dob, address);

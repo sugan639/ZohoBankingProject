@@ -350,11 +350,13 @@ public class AdminHandler {
 			String email = json.optString("email", null);
 			Long mobileNumber = json.has("mobile_number") ? json.getLong("mobile_number") : null;
 			String newPassword = json.has("new_password") ? json.getString("new_password") : null;
+    	    Boolean allowMultipleSession = json.has("multiple_session")? json.getBoolean("multiple_sessions"): false;
+
 
 			String hashedPassword = BcryptService.hashPassword(newPassword);
 			
 			// Update users table
-			userDAO.updateUserFields(userId, name, email, mobileNumber, modifiedBy, hashedPassword);
+			userDAO.updateUserFields(userId, name, email, mobileNumber, modifiedBy, hashedPassword,allowMultipleSession);
 
 			// Role-based updates
 			if (role.equals("CUSTOMER")) {
@@ -916,7 +918,7 @@ public class AdminHandler {
 
 			String newAdminIdString = json.optString("new_admin_id");
 			String ifscCode = json.optString("ifsc_code");
-			String bankName = json.optString("bank_name");
+			String bankName = json.optString("bank_name"); // Yet to change it to branch name
 			String location = json.optString("location");
 
 			if (newAdminIdString == null || bankName == null || bankName.isEmpty() || location == null
@@ -929,7 +931,7 @@ public class AdminHandler {
 			// Generate IFSC code if not provided
 			if (ifscCode == null || ifscCode.isEmpty()) {
 				BranchUtil branchUtil = new BranchUtil();
-				ifscCode = branchUtil.generateIfscCode(bankName, location);
+				ifscCode = branchUtil.generateIfscCode( location);
 			}
 
 			Long newAdminId = Long.parseLong(newAdminIdString);

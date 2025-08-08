@@ -11,8 +11,12 @@ public class User {
     private long createdAt;
     private long modifiedAt;
     private long modifiedBy;
+    private boolean isMultipleSession;
 
-    // Enum for role
+	private boolean firtTimeLogin;
+
+
+	// Enum for role
     public enum Role {
         CUSTOMER, EMPLOYEE, ADMIN
     }
@@ -21,7 +25,7 @@ public class User {
     public User() {}
 
     public User(long userId, String name, String password, String email,
-                  long mobileNumber, Role role, long createdAt, long modifiedAt, long modifiedBy) {
+                  long mobileNumber, Role role, long createdAt, long modifiedAt, long modifiedBy, boolean isMultipleSession, boolean firtTimeLogin ) {
         this.userId = userId;
         this.name = name;
         this.password = password;
@@ -31,6 +35,8 @@ public class User {
         this.createdAt = createdAt;
         this.modifiedAt = modifiedAt;
         this.modifiedBy = modifiedBy;
+        this.isMultipleSession = isMultipleSession;
+        this.firtTimeLogin = firtTimeLogin;
     }
 
     // Getters and Setters
@@ -106,4 +112,36 @@ public class User {
     public void setModifiedBy(long modifiedBy) {
         this.modifiedBy = modifiedBy;
     }
+    
+    
+    public boolean isMultipleSession() {
+		return isMultipleSession;
+	}
+
+	public void setMultipleSession(boolean isMultipleSession) {
+		this.isMultipleSession = isMultipleSession;
+	}
+
+    
+ 
+	public boolean isFirtTimeLogin() {
+		return firtTimeLogin;
+	}
+
+	public void setFirtTimeLogin(boolean firtTimeLogin) {
+		this.firtTimeLogin = firtTimeLogin;
+	}
+
+	
 }
+
+
+
+
+
+
+
+
+
+
+

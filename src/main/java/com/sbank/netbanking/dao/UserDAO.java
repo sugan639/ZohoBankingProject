@@ -47,6 +47,7 @@ public class UserDAO {
                 user.setCreatedAt(rs.getLong("created_at"));
                 user.setModifiedAt(rs.getLong("modified_at"));
                 user.setModifiedBy(rs.getLong("modified_by"));
+                user.setMultipleSession(rs.getBoolean("multiple_sessions"));
                 return user;
             } 
             
@@ -69,8 +70,10 @@ public class UserDAO {
 
     }
     
-    public void updateUserFields(Long userId, String name, String email, Long mobileNumber, Long modifiedBy, String password) throws TaskException {
-        if (name == null && email == null && mobileNumber == null) {
+    public void updateUserFields(Long userId, String name, String email, Long mobileNumber, 
+    		Long modifiedBy, String password, Boolean allowMultipleSession) throws TaskException {
+    	
+        if (name == null && email == null && mobileNumber == null && allowMultipleSession == null) {
             // Nothing meaningful to update
             return;
         }
@@ -95,12 +98,17 @@ public class UserDAO {
       	  sql.append("password = ?, ");
             params.add(password);
       }
-
+        
+        if (allowMultipleSession != null) {
+            sql.append("multiple_sessions = ?, ");
+            params.add(allowMultipleSession);
+        }
 
         sql.append("modified_at = ?, modified_by = ? WHERE user_id = ?");
         params.add(System.currentTimeMillis());
         params.add(modifiedBy);
         params.add(userId);
+
 
         try (ConnectionManager connectionManager = new ConnectionManager()) {
             connectionManager.initConnection();

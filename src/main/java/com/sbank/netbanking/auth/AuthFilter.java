@@ -1,9 +1,6 @@
 package com.sbank.netbanking.auth;
 
 import java.io.IOException;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -25,21 +22,21 @@ import com.sbank.netbanking.util.ErrorResponseUtil;
 @WebFilter("/*")
 public class AuthFilter implements Filter {
 
-
-	
-
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-            throws ServletException {
+            throws ServletException, IOException {
+
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         SessionService sessionService = new SessionService();
-        // CORS setup
+
+        // --- CORS Setup ---
         String origin = httpRequest.getHeader("Origin");
-        if ("http://localhost:3003".equals(origin)) {
+        if (origin != null && (origin.equals("http://localhost:3000") || origin.equals("http://localhost:3001"))) {
             httpResponse.setHeader("Access-Control-Allow-Origin", origin);
         }
-        httpResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELE		System.out.print(\"The maximum product subarray is: \"+answer);TE, OPTIONS");
+
+        httpResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
         httpResponse.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
         httpResponse.setHeader("Access-Control-Allow-Credentials", "true");
 
@@ -50,65 +47,60 @@ public class AuthFilter implements Filter {
 
         String path = httpRequest.getRequestURI().substring(httpRequest.getContextPath().length());
 
-		ZonedDateTime istTime = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
-		String formattedTime = istTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        
 
-		System.out.println("Intercepted path: " + path + " at IST time: " + formattedTime);
-        	
-		
         try {
+            // --- Public Route Check ---
             if (isPublicRoute(path)) {
                 chain.doFilter(request, response);
                 return;
             }
+            
+            
 
-            
-            
-            
+            // --- Session Handling ---
             CookieUtil cookieUtil = new CookieUtil();
-            String sessionId = cookieUtil.getSessionIdFromCookies(httpRequest);
-            if (sessionId == null) {
-            	 ErrorResponseUtil.send(httpResponse, HttpServletResponse.SC_UNAUTHORIZED,
-                         new ErrorResponse("Unauthorized", 401, "Missing session cookie"));
-                     return;
+            String[] values = cookieUtil.getSessionIdAndUserId(httpRequest);
+           
+            
+            if (values == null) {
+                ErrorResponseUtil.send(httpResponse, HttpServletResponse.SC_UNAUTHORIZED,
+                        new ErrorResponse("Unauthorized", 401, "Missing session cookie"));
+                return;
+            }
+            
+            String sessionUUID = values[0];	// UUID
+            String sessionId = values[1];	// SessionId
+            
+            System.out.println("ID: "+sessionId);
+            
+            
+            SessionData sessionData = sessionService.sessionValidator(sessionUUID, sessionId);
+            if (sessionData == null) {
+                ErrorResponseUtil.send(httpResponse, HttpServletResponse.SC_UNAUTHORIZED,
+                        new ErrorResponse("Unauthorized", 401, "Session expired or invalid"));
+                return;
             }
 
-            
-           
-            SessionData sessionData =  new SessionData();
-            sessionData =  sessionService.sessionValidator(sessionId); // Returns session data if valid session exists
-
-            
-            
-            // Request fields validator
-//            StringBuilder error = new StringBuilder();
-//            if (RequestValidator.isValid(httpRequest, error)) {
-//            	httpResponse.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-//            	httpResponse.getWriter().write("{\"error\": \"" + error.toString() + "\"}");
-//                return;
-//            }
-        
-        
-           
-
-            
-            
-            if (sessionData != null) {
-            	request.setAttribute("sessionData", sessionData); // Setting sessionID as request attribute
-                chain.doFilter(request, response);
-            } else {
-            	 ErrorResponseUtil.send(httpResponse, HttpServletResponse.SC_UNAUTHORIZED,
-                         new ErrorResponse("Unauthorized", 401, "Session expired or invalid"));
+            // --- Request Field Validation ---
+            StringBuilder error = new StringBuilder();
+            if (RequestValidator.isValid(httpRequest, error)) {
+                httpResponse.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                httpResponse.getWriter().write("{\"error\": \"" + error.toString() + "\"}");
+                return;
             }
 
-        } catch (IOException | TaskException e) {
-        	 try {
-				ErrorResponseUtil.send(httpResponse, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-				         new ErrorResponse("TaskException", 500, e.getMessage()));
-			} catch (TaskException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
+            // --- Proceed to next layer ---
+            request.setAttribute("sessionData", sessionData);
+            chain.doFilter(request, response);
+
+        } catch (TaskException e) {
+            try {
+                ErrorResponseUtil.send(httpResponse, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                        new ErrorResponse("TaskException", 500, e.getMessage()));
+            } catch (TaskException ex) {
+                ex.printStackTrace(); // Should be logged properly
+            }
         }
     }
 
@@ -117,6 +109,4 @@ public class AuthFilter implements Filter {
                path.startsWith("/auth/logout") ||
                path.startsWith("/register");
     }
-
-   
 }

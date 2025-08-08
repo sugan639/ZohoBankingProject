@@ -1,23 +1,111 @@
 package com.sbank.netbanking.util;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 
+import com.sbank.netbanking.auth.CookieEncryptor;
+
 public class CookieUtil {
-	
-    public String getSessionIdFromCookies(HttpServletRequest request) {
-    	final String SESSION_COOKIE_NAME = "BANK_SESSION_ID";
-    	
+
+    public String[] getSessionIdAndUserId(HttpServletRequest request) {
+        final String SESSION_COOKIE_NAME = "BANK_SESSION_ID";
+
         Cookie[] cookies = request.getCookies();
         if (cookies == null) return null;
 
         for (Cookie cookie : cookies) {
             if (SESSION_COOKIE_NAME.equals(cookie.getName())) {
-                return cookie.getValue();
+                try {
+                	
+                	String encryptedCookieValue = cookie.getValue();
+                	CookieEncryptor cookieEncryptor = new CookieEncryptor();
+                	String decryptedCookie = cookieEncryptor.decrypt(encryptedCookieValue);
+                	
+                    String decodedValue = URLDecoder.decode(decryptedCookie, StandardCharsets.UTF_8);
+                    return decodedValue.split(":", 2); // returns [sessionUUID, sessionId]
+ 
+                } 
+                
+                catch (Exception e) {
+                    e.printStackTrace();
+                    return null;
+                }
             }
         }
         return null;
     }
-	
-
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//
+//public class CookieUtil {
+//	
+//    public String getSessionIdFromCookies(HttpServletRequest request) {
+//    	final String SESSION_COOKIE_NAME = "BANK_SESSION_ID";
+//    	
+//        Cookie[] cookies = request.getCookies();
+//        if (cookies == null) return null;
+//
+//        for (Cookie cookie : cookies) {
+//            if (SESSION_COOKIE_NAME.equals(cookie.getName())) {
+//                return cookie.getValue();
+//            }
+//        }
+//        return null;
+//    }
+//	
+//
+//}

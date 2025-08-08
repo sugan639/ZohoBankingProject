@@ -18,6 +18,7 @@ import com.sbank.netbanking.service.SessionService;
 import com.sbank.netbanking.util.CookieUtil;
 import com.sbank.netbanking.util.PojoJsonConverter;
 import com.sbank.netbanking.util.RequestJsonConverter;
+import com.sbank.redis.util.RedisUtil;
 
 public class AuthHandler {
 	
@@ -30,7 +31,6 @@ public class AuthHandler {
 		PojoJsonConverter pojoToJson = new PojoJsonConverter();
 		RequestJsonConverter reader =  new RequestJsonConverter();
 
-		System.out.println("Request reached login method");
 		
 		// Request to json formating
 	    JSONObject json = reader.convertToJson(req);  
@@ -46,11 +46,12 @@ public class AuthHandler {
 		   res.setContentType("application/json");
 		   PrintWriter out = res.getWriter();
 		   out.print(jsonResponse);
+		   
 	    }
 	    
 	    else {
 	    	RequestRouter requestRouter = new RequestRouter();
-	    	requestRouter.sendError(res, 404, "Credentials are wrong!");
+	    	requestRouter.sendError(res, 404, "Credentials are wrong or multiple sessions not allowed!");
 	    }
      }
         
@@ -61,32 +62,27 @@ public class AuthHandler {
 	    
 	}
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 
 	// Logout method
 	public void logout(HttpServletRequest req, HttpServletResponse res) throws TaskException {
 		
         CookieUtil cookieUtil = new CookieUtil();
-        String sessionId = cookieUtil.getSessionIdFromCookies(req);
+        
+        String[] values = cookieUtil.getSessionIdAndUserId(req);
 
- 	    SessionService sessionService = new SessionService();
 
- 	    if (sessionId != null) {
+
+ 	    if (values != null) {
+ 	    	
+ 	        String cookieSessionId = values[1];
+
+ 	 	    SessionService sessionService = new SessionService();
+ 	 	    
+ 			RedisUtil redisUtil = new RedisUtil();
+ 			redisUtil.deleteSession(cookieSessionId);
 	      
-	        sessionService.deleteDbCookies(sessionId);
+ 			long cookieSessionIdLong = Long.parseLong(cookieSessionId);
+	        sessionService.deleteDbCookies(cookieSessionIdLong);
 	        // Clear the cookie from browser
 	        Cookie cookie = new Cookie("BANK_SESSION_ID", "");
 	        cookie.setHttpOnly(true);
@@ -94,6 +90,7 @@ public class AuthHandler {
 	        cookie.setPath("/");
 	        cookie.setMaxAge(0); // Tells browser to delete cookies immediately
 	        res.addCookie(cookie);
+	        
 	      
 	    }
 
@@ -111,6 +108,10 @@ public class AuthHandler {
         }
 	    
 	}
+	
+
+	
+	
 }
 
 

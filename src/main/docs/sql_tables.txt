@@ -129,3 +129,79 @@ Query OK, 0 rows affected (0.09 sec)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ Tasks
+ 1. A user can have single or multiple session. Also he can clear 
+ 	all other sessions other than current one [Done]
+ 	
+ 2. Two banking app handshake
+ 
+ 3. DB UUID got stealed, but he should be able to open any users session [Done]
+
+
+
+DOne
+
+1. Implements redis cache with key as id
+2. Hashed UUID and stored in db and redis cache. [Task 3]
+3. Encrypted cookies using AES algo.
+
+
+
+
+
+
+
+Credentials
+MySQL user: root
+MySQL pwd: sugan@123
+
+
+
+
+
+
+
+
+/*
+
+ifsc code -> api url
+
+ZINA9001 --> http://localhost:9090/Banking_App/admin/branches
+				
+				
+				HEADER: 
+				 HMAC : 37gf3rui@*je
+				 
+				REQUEST{
+				request_type : MONEYTRANSFER, 		
+				transaction_type : INTERBANKCREDIT,
+				bank_id : ZOHO,
+				to_account:98433,
+				from_account: 3434,
+				amount : 10
+				
+				}
+
+
+
+*/
+
+
+
+
+
+

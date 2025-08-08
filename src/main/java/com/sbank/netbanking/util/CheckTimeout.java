@@ -6,7 +6,7 @@ import com.sbank.netbanking.service.SessionService;
 
 public class CheckTimeout {
 	
-	public boolean isTimeOut(SessionData sessionData) throws TaskException {
+	public boolean isTimeOut(SessionData sessionData, Long sessionId) throws TaskException {
 		
 		if (sessionData == null) {
             return true; // Treat null session as timed out
@@ -15,7 +15,6 @@ public class CheckTimeout {
         long sessionStartTime = sessionData.getStartTime();
         long expiryTime = sessionData.getExpiryDuration();
         long currentTime = System.currentTimeMillis();
-        String sessionId = sessionData.getSessionID();
 
         long loggedInDuration = (currentTime - sessionStartTime);
         
@@ -25,6 +24,9 @@ public class CheckTimeout {
         	return false;
         }
 		
+        
+        // If timed out, then we delete the session data of that sessionId
+        
         SessionService sessionService = new SessionService();
         sessionService.deleteDbCookies(sessionId);
 		

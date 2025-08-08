@@ -7,10 +7,12 @@ import com.sbank.netbanking.auth.AuthHandler;
 import com.sbank.netbanking.handler.AdminHandler;
 import com.sbank.netbanking.handler.CustomerHandler;
 import com.sbank.netbanking.handler.EmployeeHandler;
+import com.sbank.netbanking.handler.InterBankHandler;
 import com.sbank.netbanking.handler.NewUserRegister;
 import com.sbank.netbanking.handler.analytics.AdminAnalyticsHandler;
 import com.sbank.netbanking.handler.analytics.EmployeeAnalyticsHandler;
 import com.sbank.netbanking.interfaces.HandlerInterface;
+import com.sbank.netbanking.service.SessionService;
 
 
 public class RouteRegistry {
@@ -24,12 +26,16 @@ public class RouteRegistry {
     NewUserRegister  newUserRegister = new NewUserRegister();
     AdminAnalyticsHandler analyticsHandler = new AdminAnalyticsHandler();
     EmployeeAnalyticsHandler employeeAnalyticsHandler = new EmployeeAnalyticsHandler();
+    SessionService sessionService = new SessionService();
+    InterBankHandler interBankHandler = new InterBankHandler();
     
     public RouteRegistry() {
         // Authentication
         routes.add(new Route("POST", "/auth/login", authHandler::login));
         routes.add(new Route("POST", "/auth/logout", authHandler::logout));
         routes.add(new Route("POST", "/register", newUserRegister::registerUser));
+        routes.add(new Route("POST", "/auth/config", sessionService::clearAllUserSession));
+
         
 
         // Customer
@@ -80,17 +86,20 @@ public class RouteRegistry {
         // Analytics
         routes.add(new Route("GET", "/admin/analytics/monthly-totals", analyticsHandler::getMonthlyTotals));
         routes.add(new Route("GET", "/admin/analytics/top-accounts",   analyticsHandler::getTopActiveAccounts));
-        
-        // Employee analytics
         routes.add(new Route("GET", "/employee/analytics/transaction-summary",      employeeAnalyticsHandler::branchSummary));
         routes.add(new Route("GET", "/employee/analytics/top-customers", employeeAnalyticsHandler::topCustomers));
-
-        // Customer analytics
         routes.add(new Route("GET", "/customer/analytics/dashboard-summary", customerHandler::analyticSummary));
+        
+        
+        // Interbank API 
+        
+        routes.add(new Route("POST", "/interbank/transfer", interBankHandler::interbankCredit));
+        
+
+        
 
     }
     
-// /customer/analytics/summary
     
 
     public HandlerInterface matchRoute(String method, String path) {

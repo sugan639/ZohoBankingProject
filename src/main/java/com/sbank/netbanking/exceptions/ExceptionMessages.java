@@ -4,6 +4,8 @@ package com.sbank.netbanking.exceptions;
 public class ExceptionMessages {
 
 		public static final String USER_VALIDATION_FAILED = "User ID validation failed!";
+		public static final String DECRYPT_ERROR = "Decrypt error on com.sbank.netbanking.auth.CookieEncryptor class";
+		public static final String ENCRYPTION_ERROR = "ENCRYPTION error on com.sbank.netbanking.auth.CookieEncryptor class";
 		// Error messages
 	    public static String NULL_INPUT_ERROR = "Input strings are null";
 	    public static String LENGTH_ERROR = "String length is very less than required length!";
