@@ -11,8 +11,10 @@ import javax.servlet.http.HttpServletResponse;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import com.sbank.netbanking.auth.CookieEncryptor;
 import com.sbank.netbanking.dao.AccountDAO;
 import com.sbank.netbanking.dao.BranchDAO;
+import com.sbank.netbanking.dao.ClientBankDAO;
 import com.sbank.netbanking.dao.CustomerDAO;
 import com.sbank.netbanking.dao.EmployeeDAO;
 import com.sbank.netbanking.dao.TransactionDAO;
@@ -20,6 +22,7 @@ import com.sbank.netbanking.dao.UserDAO;
 import com.sbank.netbanking.dto.ErrorResponse;
 import com.sbank.netbanking.dto.UserDTO;
 import com.sbank.netbanking.exceptions.TaskException;
+import com.sbank.netbanking.handler.model.ClientData;
 import com.sbank.netbanking.model.Account;
 import com.sbank.netbanking.model.Branch;
 import com.sbank.netbanking.model.Customer;
@@ -561,11 +564,8 @@ public class AdminHandler {
 
 			long doneBy = sessionData.getUserId();
 			long transactionId = transactionUtil.generateTransactionId(); // shared for both rows if intra-bank
-
+			JSONObject response =  new JSONObject();
 			if (transferType.equalsIgnoreCase("INTRA_BANK")) {
-
-				System.out.println("fromAccount: " + fromAccount);
-				System.out.println("toAccount: " + fromAccount);
 
 				transactionDAO.withdraw(fromAccount, amount, doneBy, TransactionType.INTRA_BANK_DEBIT, transactionId,
 						toAccount, null);
@@ -574,15 +574,16 @@ public class AdminHandler {
 			} else if (transferType.equalsIgnoreCase("INTER_BANK")) {
 				transactionDAO.withdraw(fromAccount, amount, doneBy, TransactionType.INTERBANK_DEBIT, transactionId,
 						toAccount, ifscCode);
-				// No deposit call for inter-bank – credit is done by external bank
+				// Interbank transfer block
+				InterBankHandler interBankHandler = new InterBankHandler();
+				response = interBankHandler.initiateInterbankTransfer(fromAccount, toAccount, amount, doneBy, transactionId, ifscCode);
+				
 			} else {
 				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
 						new ErrorResponse("Bad Request", 400, "Invalid transfer type"));
 				return;
 			}
 
-			// I am the most powerful person onthe entire universe
-			JSONObject response = new JSONObject();
 			response.put("message", "Transfer successful");
 			response.put("transaction_id", transactionId);
 
@@ -1016,5 +1017,87 @@ public class AdminHandler {
 					new ErrorResponse("Error", 500, e.getMessage()));
 		}
 	}
+	
+	public void addClientBank(HttpServletRequest req, HttpServletResponse res) throws TaskException {
+		
+	        try {
+	            // 1. Parse JSON request
+			    final RequestJsonConverter jsonConverter = new RequestJsonConverter();
+	            JSONObject json = jsonConverter.convertToJson(req);
+
+	            String ifscCode = json.optString("ifsc_code", "").trim();
+	            String bankName = json.optString("bank_name", "").trim();
+	            String clientUrl = json.optString("client_url", "").trim();
+	            String secretKey = json.optString("secret_key", "").trim();
+
+	            // 2. Validate input
+	            if (ifscCode.isEmpty() || bankName.isEmpty() || clientUrl.isEmpty() || secretKey.isEmpty()) {
+	                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+	                    new ErrorResponse("Bad Request", 400, "All fields (ifsc_code, bank_name, client_url, secret_key) are required"));
+	                return;
+	            }
+
+	            if (ifscCode.length() < 4) {
+	                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+	                    new ErrorResponse("Bad Request", 400, "IFSC code must be atleast 4  characters long"));
+	                return;
+	            }
+
+	            // Use only first 4 letters as lookup key
+	            String bankCode = ifscCode.substring(0, 4);
+
+	            // 3. Check if already exists
+	            ClientBankDAO clientBankDAO = new ClientBankDAO();
+	            if (clientBankDAO.existsByIfsc(bankCode)) {
+	                ErrorResponseUtil.send(res, HttpServletResponse.SC_CONFLICT,
+	                    new ErrorResponse("Conflict", 409, "Bank with IFSC " + bankCode + " already registered"));
+	                return;
+	            }
+
+	            // 4. Save to DB
+	            ClientData clientData = new ClientData();
+	            clientData.setIfscCode(bankCode);
+	            clientData.setBankName(bankName);
+	            clientData.setClientUrl(clientUrl);
+	            CookieEncryptor encryptor = new CookieEncryptor(); 
+                String encryptedSecretKey = encryptor.encrypt(secretKey);
+	            clientData.setSecretKey(encryptedSecretKey);
+
+	            boolean success = clientBankDAO.addClientBank(clientData);
+
+	            if (!success) {
+	                ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+	                    new ErrorResponse("Error", 500, "Failed to save bank data"));
+	                return;
+	            }
+
+	            // 5. Success response
+	            JSONObject response = new JSONObject();
+	            response.put("message", "Client bank added successfully");
+	            response.put("ifsc_code", bankCode);
+	            response.put("bank_name", bankName);
+	            response.put("client_url", clientUrl);
+
+	            res.setContentType("application/json");
+	            res.setStatus(HttpServletResponse.SC_OK);
+	            res.getWriter().write(response.toString());
+
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+	                new ErrorResponse("IO Error", 500, "Error reading request"));
+	        } catch (TaskException e) {
+	            e.printStackTrace();
+	            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+	                new ErrorResponse("Database Error", 500, e.getMessage()));
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	            ErrorResponseUtil.send(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+	                new ErrorResponse("Unexpected Error", 500, "An unexpected error occurred"));
+	        }
+	    
+		}
+		
+	
 
 }

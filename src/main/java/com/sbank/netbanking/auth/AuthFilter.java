@@ -107,6 +107,8 @@ public class AuthFilter implements Filter {
     private boolean isPublicRoute(String path) {
         return path.startsWith("/auth/login") ||
                path.startsWith("/auth/logout") ||
-               path.startsWith("/register");
+               path.startsWith("/register") ||
+               path.startsWith("/interbank/transfer"); 
+
     }
 }

@@ -1,7 +1,6 @@
 package com.sbank.netbanking.handler;
 
 import java.io.IOException;
-
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
@@ -143,22 +142,31 @@ public class CustomerHandler {
             Long fromAccount = json.has("from_account") ? json.getLong("from_account") : null;
             Long toAccount = json.has("to_account") ? json.getLong("to_account") : null;
             Double amount = json.has("amount") ? json.getDouble("amount") : null;
+			String transferType = json.optString("transfer_type", null); // Expected: "INTRA_BANK" or "INTER_BANK"
+			String ifscCode = json.optString("ifsc_code", null); // optional
+
+            
 
             if (fromAccount == null || toAccount == null || amount == null || amount <= 0) {
                 ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
                     new ErrorResponse("Bad Request", 400, "from_account, to_account and valid amount are required"));
                 return;
             }
+            
+            if (transferType == null) {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Transfer type missing", 400, "Missing transfer type. i.e, INTER_BANK or INTRA_BANK"));
+				return;
+			}
 
             // Get session user
             SessionData sessionData = (SessionData) req.getAttribute("sessionData");
             long userId = sessionData.getUserId();
-            System.out.println("Customer user ID: "+userId);
 
             // Validate fromAccount belongs to this customer
             AccountDAO accountDAO = new AccountDAO();
             Account acc = accountDAO.getAccountByNumber(fromAccount);
-            System.out.println("Customer account number: "+fromAccount);
+
             if (acc == null || acc.getUserId() != userId) {
                 ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
                     new ErrorResponse("Unauthorized", 403, "Cannot transfer from another user's account"));
@@ -175,6 +183,10 @@ public class CustomerHandler {
 
             // Generate transaction ID shared for both entries
             long transactionId = transactionUtil.generateTransactionId();
+ 	        JSONObject response = new JSONObject();
+
+
+			if (transferType.equalsIgnoreCase("INTRA_BANK")) {
 
             // 1. Withdraw from sender
             Transaction debitTxn = transactionDAO.withdraw(fromAccount, amount, userId,
@@ -194,13 +206,50 @@ public class CustomerHandler {
                 TransactionType.INTRA_BANK_CREDIT, transactionId, fromAccount, null);
 
             // Success response
-            JSONObject response = new JSONObject();
             response.put("message", "Transfer successful");
             response.put("debit_transaction", pojoConverter.pojoToJson(debitTxn));
             response.put("credit_transaction", pojoConverter.pojoToJson(creditTxn));
 
             res.setContentType("application/json");
             res.getWriter().write(response.toString());
+			}
+			
+			// Inter bank transfer
+			else if (transferType.equalsIgnoreCase("INTER_BANK")) {
+				
+	            if (ifscCode == null || ifscCode.isEmpty()) {
+	                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+	                    new ErrorResponse("Bad Request", 400, "IFSC code is required for interbank transfer"));
+	                return;
+	            }
+
+	            // 1. Debit from sender
+	            Transaction debitTxn = transactionDAO.withdraw(
+	                fromAccount, amount, userId,
+	                TransactionType.INTERBANK_DEBIT, transactionId, toAccount, ifscCode);
+
+	            if (debitTxn.getStatus() == Transaction.TransactionStatus.FAILED) {
+	                JSONObject resp = pojoConverter.pojoToJson(debitTxn);
+	                resp.put("message", "Insufficient balance. Transfer failed.");
+	                res.setContentType("application/json");
+	                res.getWriter().write(resp.toString());
+	                return;
+	            }
+
+	            // 2. Credit ti interbank account
+	            InterBankHandler interBankHandler = new InterBankHandler();
+				response = interBankHandler.initiateInterbankTransfer(fromAccount, toAccount, amount, userId, transactionId, ifscCode);
+	        }
+			else {
+				ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
+						new ErrorResponse("Bad Request", 400, "Invalid transfer type"));
+				return;
+			}
+
+			response.put("transaction_id", transactionId);
+
+			res.setContentType("application/json");
+			res.getWriter().write(response.toString());
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -212,9 +261,7 @@ public class CustomerHandler {
                 new ErrorResponse("Internal Error", 500, e.getMessage()));
         }
     }
-    
-    
-    
+
  // GET /customer/transactions
     public void getTransaction(HttpServletRequest req, HttpServletResponse res) throws TaskException {
         try {

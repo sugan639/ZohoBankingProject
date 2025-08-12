@@ -18,7 +18,7 @@ import com.sbank.netbanking.model.Transaction.TransactionType;
 
 public class TransactionDAO {
 
-	public Transaction deposit(Long toAccountNumber, double amount, long doneBy, 
+	public Transaction deposit(Long toAccountNumber, double amount, Long doneBy, 
 			TransactionType transactionType, long transactionId, Long fromAccountNumber, String ifcsCode)
 					throws TaskException {
 		
@@ -45,10 +45,7 @@ public class TransactionDAO {
 	        ) 
 	        {
 	        	
-	        	
-	            System.out.println(toAccountNumber);
-		        System.out.println(amount);
-		        
+	   
 	            // 1. Fetch account details
 	            getAccStmt.setLong(1, toAccountNumber);
 	            ResultSet rs = getAccStmt.executeQuery();
@@ -225,10 +222,9 @@ public class TransactionDAO {
 	            if(ifcsCode!=null) {
 		            txn.setIfscCode(ifcsCode);
 		            }
-		            
 	            return txn;
-
 	        }
+	        
 	    } catch (SQLException e) {
 	        throw new TaskException("Failed to perform withdrawal", e);
 	    } catch (Exception e) {

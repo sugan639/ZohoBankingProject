@@ -80,7 +80,7 @@ public class RouteRegistry {
         routes.add(new Route("POST", "/admin/transactions/query", adminHandler::queryTransactions));
         routes.add(new Route("POST", "/admin/branch/create", adminHandler::createBranch));
         routes.add(new Route("GET", "/admin/account/get-accounts", adminHandler::getAccountDetails));
-
+        routes.add(new Route("POST", "/admin/new-client-bank", adminHandler::addClientBank));
 
 
         // Analytics

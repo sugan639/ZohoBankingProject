@@ -145,12 +145,14 @@ Query OK, 0 rows affected (0.09 sec)
 
  Tasks
  1. A user can have single or multiple session. Also he can clear 
- 	all other sessions other than current one [Done]
+ 	all other sessions other than current one 						
  	
- 2. Two banking app handshake
+ 2. Two banking app handshake 
  
- 3. DB UUID got stealed, but he should be able to open any users session [Done]
+ 3. DB UUID got stealed, but he should be able to open any users session 
 
+ 4. If secret key exposed in one server, then it should not affect its client server.
+ 
 
 
 DOne

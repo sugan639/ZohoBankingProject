@@ -8,7 +8,8 @@ public class Transaction {
         INTRA_BANK_DEBIT,
         INTRA_BANK_CREDIT,
         INTERBANK_DEBIT,
-        INTERBANK_CREDIT
+        INTERBANK_CREDIT,
+        INTERBANK_REFUND
     }
 
     public enum TransactionStatus {

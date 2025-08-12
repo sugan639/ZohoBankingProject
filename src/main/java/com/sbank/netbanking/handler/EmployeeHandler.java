@@ -649,6 +649,7 @@ public class EmployeeHandler {
  	        
  	        long doneBy = sessionData.getUserId();
  	        long transactionId = transactionUtil.generateTransactionId(); // shared for both rows if intra-bank
+ 	        JSONObject response = new JSONObject();
 
  	        if (transferType.equalsIgnoreCase("INTRA_BANK")) {
  	            transactionDAO.withdraw(fromAccount, amount, doneBy, TransactionType.INTRA_BANK_DEBIT, transactionId, toAccount, null);
@@ -656,14 +657,15 @@ public class EmployeeHandler {
  	        } else if (transferType.equalsIgnoreCase("INTER_BANK")) {
  	            transactionDAO.withdraw(fromAccount, amount, doneBy, TransactionType.INTERBANK_DEBIT, transactionId, toAccount, ifscCode);
  	            // No deposit call for inter-bank – credit is done by external bank
+ 	       	InterBankHandler interBankHandler = new InterBankHandler();
+			response = interBankHandler.initiateInterbankTransfer(fromAccount, toAccount, amount, doneBy, transactionId, ifscCode);
+		
  	        } else {
  	            ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
  	                new ErrorResponse("Bad Request", 400, "Invalid transfer type"));
  	            return;
  	        }
 
- 	        // I am the most powerful person onthe entire universe
- 	        JSONObject response = new JSONObject();
  	        response.put("message", "Transfer successful");
  	        response.put("transaction_id", transactionId);
 
