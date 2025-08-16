@@ -1061,7 +1061,7 @@ public class AdminHandler {
 	            clientData.setClientUrl(clientUrl);
 	            CookieEncryptor encryptor = new CookieEncryptor(); 
                 String encryptedSecretKey = encryptor.encrypt(secretKey);
-	            clientData.setSecretKey(encryptedSecretKey);
+	            clientData.setPublicKey(encryptedSecretKey);
 
 	            boolean success = clientBankDAO.addClientBank(clientData);
 

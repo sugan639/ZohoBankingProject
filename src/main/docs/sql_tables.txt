@@ -152,8 +152,8 @@ Query OK, 0 rows affected (0.09 sec)
  3. DB UUID got stealed, but he should be able to open any users session 
 
  4. If secret key exposed in one server, then it should not affect its client server.
- 
-
+ 5. If man in middle got the request, and send later for the second time, then how to prevent it.
+ 6. 
 
 DOne
 

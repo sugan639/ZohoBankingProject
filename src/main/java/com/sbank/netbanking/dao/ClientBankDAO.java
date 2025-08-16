@@ -19,9 +19,7 @@ public class ClientBankDAO {
         String query = "SELECT ifsc_code, bank_name, client_url, secret_key FROM client_bank WHERE ifsc_code = ?";
         
         String bankCode = ifsc.substring(0, 4);
-        
-        System.out.println(bankCode);
-        
+                
         try (ConnectionManager cm = new ConnectionManager()) {
             cm.initConnection();
             Connection conn = cm.getConnection();
@@ -35,7 +33,7 @@ public class ClientBankDAO {
                 client.setIfscCode(rs.getString("ifsc_code"));
                 client.setBankName(rs.getString("bank_name"));
                 client.setClientUrl(rs.getString("client_url"));
-                client.setSecretKey(rs.getString("secret_key"));
+                client.setPublicKey(rs.getString("secret_key"));
                 return client;
             }
          }
@@ -65,7 +63,7 @@ public class ClientBankDAO {
                 stmt.setString(1, clientData.getIfscCode());
                 stmt.setString(2, clientData.getBankName());
                 stmt.setString(3, clientData.getClientUrl());
-                stmt.setString(4, clientData.getSecretKey());
+                stmt.setString(4, clientData.getPublicKey());
 
                 int rows = stmt.executeUpdate();
                 return rows > 0;

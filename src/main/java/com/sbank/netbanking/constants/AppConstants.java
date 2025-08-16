@@ -9,6 +9,7 @@ public class AppConstants {
     public static final String SESSION_COOKIE_NAME = "BANK_SESSION_ID_1";
     public static final boolean SESSION_COOKIE_SECURE = true; 
     public static final boolean SESSION_COOKIE_HTTP_ONLY = true;
+    public static final long REQUEST_TIMEOUT_MILLIS = 5 * 60 * 1000L; // 5 minutes 
     
     // Logging
     public static final String LOG_FILE_PATH = "Banking_App/src/main/log/bankingapp.log";

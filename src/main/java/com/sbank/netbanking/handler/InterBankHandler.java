@@ -8,14 +8,20 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.json.JSONObject;
 
-import com.sbank.netbanking.auth.CookieEncryptor;
 import com.sbank.netbanking.constants.AppConstants;
+import com.sbank.netbanking.crypt.SignatureUtil;
 import com.sbank.netbanking.dao.AccountDAO;
 import com.sbank.netbanking.dao.ClientBankDAO;
 import com.sbank.netbanking.dao.TransactionDAO;
@@ -26,85 +32,76 @@ import com.sbank.netbanking.model.Account;
 import com.sbank.netbanking.model.Transaction;
 import com.sbank.netbanking.model.Transaction.TransactionType;
 import com.sbank.netbanking.util.ErrorResponseUtil;
-import com.sbank.netbanking.util.HMACUtil;
 import com.sbank.netbanking.util.PojoJsonConverter;
+import com.sbank.netbanking.util.RequestJsonConverter;
+import com.sbank.netbanking.util.TransactionUtil;
 
-public class InterBankHandler {
+public class InterBankHandler { 
 
-    public void interbankCredit(HttpServletRequest req, HttpServletResponse res) throws TaskException, IOException {
-        BufferedReader reader = null;
-        String requestBody = "";
+    public void interbankCredit(HttpServletRequest req, HttpServletResponse res) throws TaskException, IOException { 
+    	RequestJsonConverter jsonConverter = new RequestJsonConverter();
+
 
         try {
-            // 1. Read raw request body (needed for HMAC verification)
-            StringBuilder sb = new StringBuilder();
-            reader = new BufferedReader(new InputStreamReader(req.getInputStream(), "UTF-8"));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
-            }
-            requestBody = sb.toString();
+            JSONObject json = jsonConverter.convertToJson(req);
 
-            if (requestBody.isEmpty()) {
-                ErrorResponseUtil.send(res, HttpServletResponse.SC_BAD_REQUEST,
-                    new ErrorResponse("Bad Request", 400, "Empty request body"));
-                return;
-            }
-
+            String requestExpiryDurationString = json.optString("expiry_duration");
+            Long requestExpiryDuration = Long.parseLong(requestExpiryDurationString);
+            
+            String requestBody = json.toString();
+            
             // 2. Get headers
             String senderIfsc = req.getHeader("X-IFSC");
             String receivedSignature = req.getHeader("X-Signature");
-
-            System.out.println("Received X-IFSC: " + senderIfsc);
-            System.out.println("Received X-Signature: " + receivedSignature);
-            System.out.println("Request Body: " + requestBody);
+            String requestTimestampString = req.getHeader("X-Timestamp");
+            Long requestTimeStamp = Long.parseLong(requestTimestampString);
 
             // 3. Validate required headers
-            if (senderIfsc == null || senderIfsc.trim().isEmpty() ||
+            if (senderIfsc == null || senderIfsc.trim().isEmpty() || requestTimeStamp ==null|| requestExpiryDuration==null ||
                 receivedSignature == null || receivedSignature.trim().isEmpty()) {
-                sendError(res, HttpServletResponse.SC_UNAUTHORIZED, "Missing X-IFSC or X-Signature header");
-                return;
+             
+                ErrorResponseUtil.send(res, HttpServletResponse.SC_UNAUTHORIZED,
+  	                    new ErrorResponse("Request Expired", 409, "Missing X-IFSC or X-Signature header"));
+  	                return;
             }
-
-            // 4. Fetch sender bank's secret key from DB using IFSC
-            ClientBankDAO clientBankDAO = new ClientBankDAO();
-            ClientData clientData = clientBankDAO.getClientBankData(senderIfsc.trim());
-
-            if (clientData == null || clientData.getSecretKey() == null) {
-                sendError(res, HttpServletResponse.SC_UNAUTHORIZED, "Invalid or unknown IFSC code");
-                return;
+            
+            long expiryTimeMillis =requestTimeStamp +requestExpiryDuration ;
+            long currentTimeMillis = System.currentTimeMillis();
+            if(currentTimeMillis >expiryTimeMillis ) {
+            	  ErrorResponseUtil.send(res, HttpServletResponse.SC_CONFLICT,
+  	                    new ErrorResponse("Request Expired", 409, "Request expired, plese send new request"));
+  	                return;
             }
-
-            String encryptedSecretKey = clientData.getSecretKey();
-            // Decrypting secret key
-            CookieEncryptor encryptor = new CookieEncryptor();
-            String secretKey = encryptor.decrypt(encryptedSecretKey);
-
+        
+            // Decrypting signature key
+            ClientBankDAO clientBankDao = new ClientBankDAO();
+            ClientData  clientData =  clientBankDao.getClientBankData(senderIfsc);
+            String pbKey = clientData.getPublicKey();
+            
+            PublicKey publicKey = loadPublicKey(pbKey);
             // 5. Compute expected HMAC from request body
-            String expectedSignature = HMACUtil.generateHMAC(requestBody, secretKey);
-
+            SignatureUtil signatureUtil = new SignatureUtil();
+            Boolean signature = signatureUtil.verify(requestBody,receivedSignature, publicKey);   
+            
             // 6. Constant-time comparison to prevent timing attacks
-            if (!secureEquals(receivedSignature.trim(), expectedSignature)) {
-                System.out.println("HMAC Mismatch!");
-                System.out.println("Expected: " + expectedSignature);
-                System.out.println("Received: " + receivedSignature);
-                sendError(res, HttpServletResponse.SC_UNAUTHORIZED, "HMAC validation failed");
-                return;
+            if (!signature) {
+           	  ErrorResponseUtil.send(res, HttpServletResponse.SC_CONFLICT,
+	                    new ErrorResponse("Request Expired", 401, "Signature validation failed"));
+	                return;
+            
             }
 
             // 7. Parse JSON after HMAC passes
-            JSONObject json = new JSONObject(requestBody); // Use already-read body
 
             Long fromAccount = json.optLong("from_account", -1);
             Long toAccount = json.optLong("to_account", -1);
             Double amount = json.optDouble("amount", -1);
             String transactionType = json.optString("transaction_type", "");            
             
-            System.out.println("Danger here at interbankHandler: "+fromAccount+ " : " +toAccount+" : " + amount);
             // 8. Validate payload fields
             if (fromAccount <= 0 || toAccount <= 0 || amount <= 0 ||
                 !"INTER_BANK_CREDIT".equalsIgnoreCase(transactionType)
-               ) { // assuming ZOHO is expected
+               ) { 
                 sendError(res, HttpServletResponse.SC_BAD_REQUEST,
                     "Invalid or missing fields in request body");
                 return;
@@ -126,7 +123,8 @@ public class InterBankHandler {
 
             // 10. Perform credit
             TransactionDAO transactionDAO = new TransactionDAO();
-            long transactionId = System.currentTimeMillis(); // or use your generator
+    		TransactionUtil transactionUtil = new TransactionUtil();
+			long transactionId = transactionUtil.generateTransactionId();// or use your generator  ===============================================
 
             Transaction creditTxn = transactionDAO.deposit(
                 toAccount,
@@ -150,10 +148,10 @@ public class InterBankHandler {
 
             // 12. Sign the response with YOUR bank's secret (optional, but recommended)
             // Assuming your bank's IFSC is "YOURBANK" and you have a fixed secret for outgoing responses
-            String yourBankSecret = "your-bank-shared-secret"; // Should be fetched securely
-            String responseSignature = HMACUtil.generateHMAC(responseBody, yourBankSecret);
+            PrivateKey privateKey = getPrivateKeyFromEnv();
+            String responseSignature = signatureUtil.encrypt(responseBody, privateKey);
 
-            res.setHeader("X-IFSC", "YOURBANK");         // Your bank's IFSC
+            res.setHeader("X-IFSC", AppConstants.MY_IFSC);         // Your bank's IFSC
             res.setHeader("X-Signature", responseSignature);
 
             // 13. Send response
@@ -167,17 +165,21 @@ public class InterBankHandler {
         } catch (Exception e) {
             e.printStackTrace();
             sendError(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal processing error");
-        } finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
+        } 
     }
 
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
         public JSONObject initiateInterbankTransfer(Long fromAccount,
 									                Long toAccount,
 									                Double amount,
@@ -188,11 +190,14 @@ public class InterBankHandler {
 
         	 
             ClientBankDAO clientBankDAO = new ClientBankDAO();
-
-
+            SignatureUtil signatureUtil = new SignatureUtil();
+            JSONObject response = new JSONObject();
+            try {
             // 2. Get destination bank details
             ClientData clientData = clientBankDAO.getClientBankData(ifscCode);
-            if (clientData == null || clientData.getClientUrl() == null || clientData.getSecretKey() == null) {
+            PrivateKey privateKey = getPrivateKeyFromEnv();
+
+            if (clientData == null || clientData.getClientUrl() == null) {
                 rollbackDebit(fromAccount, amount, userId, transactionId, toAccount, ifscCode);
                 JSONObject resp = new JSONObject();
                 resp.put("success", false);
@@ -201,8 +206,11 @@ public class InterBankHandler {
             }
 
             HttpURLConnection conn = null;
-            try {
+
+ 
                 // 3. Prepare payload
+            	Long currentTime = System.currentTimeMillis();
+            	String timeStamp = currentTime.toString();
                 JSONObject payload = new JSONObject();
                 payload.put("from_account", fromAccount);
                 payload.put("to_account", toAccount);
@@ -211,14 +219,11 @@ public class InterBankHandler {
                 payload.put("transaction_type", "INTER_BANK_CREDIT");
                 payload.put("transaction_id", transactionId);
                 payload.put("sender_ifsc_code", AppConstants.MY_IFSC);
+                payload.put("expiry_duration", AppConstants.REQUEST_TIMEOUT_MILLIS); // 5 Minutes
 
                 String requestBody = payload.toString();
-                String encryptedSecretKey = clientData.getSecretKey();
-                // Decrypting secret key
-                CookieEncryptor encryptor = new CookieEncryptor();
-                String secretKey = encryptor.decrypt(encryptedSecretKey);
-                String signature = HMACUtil.generateHMAC(requestBody, secretKey);
-
+                          
+                String signature = signatureUtil.encrypt(requestBody, privateKey); // Work pending to implement this
                 // 4. Call external bank
                 URL url = new URL(clientData.getClientUrl());
                 conn = (HttpURLConnection) url.openConnection();
@@ -226,6 +231,7 @@ public class InterBankHandler {
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
                 conn.setRequestProperty("X-IFSC", AppConstants.MY_IFSC);
                 conn.setRequestProperty("X-Signature", signature);
+                conn.setRequestProperty("X-Timestamp", timeStamp);
                 conn.setDoOutput(true);
                 conn.setConnectTimeout(10_000);
                 conn.setReadTimeout(30_000);
@@ -233,12 +239,12 @@ public class InterBankHandler {
                 try (OutputStream os = conn.getOutputStream()) {
                     os.write(requestBody.getBytes(StandardCharsets.UTF_8));
                 }
-
+                
                 // 5. Read response
                 int statusCode = conn.getResponseCode();
                 StringBuilder responseBody = new StringBuilder();
                 InputStream stream = (statusCode >= 400) ? conn.getErrorStream() : conn.getInputStream();
-
+                
                 if (stream != null) {
                     try (BufferedReader br = new BufferedReader(
                             new InputStreamReader(stream, StandardCharsets.UTF_8))) {
@@ -249,7 +255,7 @@ public class InterBankHandler {
                     }
                 }
 
-                String responseStr = responseBody.toString().trim();
+                String responseStr = responseBody.toString().trim();	// Need to verify the response signature
                 JSONObject externalResp;
                 try {
                     externalResp = responseStr.isEmpty() ? new JSONObject() : new JSONObject(responseStr);
@@ -273,11 +279,10 @@ public class InterBankHandler {
                 }
 
                 // 6. Success
-                JSONObject success = new JSONObject();
-                success.put("success", true);
-                success.put("external_response", externalResp);
-                success.put("http_code", statusCode);
-                return success;
+                response.put("success", true);
+                response.put("external_response", externalResp);
+                response.put("http_code", statusCode);
+                return response;
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -287,9 +292,7 @@ public class InterBankHandler {
                 error.put("message", "Network error or timeout");
                 error.put("detail", e.getMessage());
                 return error;
-            } finally {
-                if (conn != null) conn.disconnect();
-            }
+            } 
         }
 
         private void rollbackDebit(Long fromAccount, Double amount, long userId, long transactionId,
@@ -302,21 +305,11 @@ public class InterBankHandler {
                         Transaction.TransactionType.INTERBANK_REFUND,
                         transactionId, toAccount, ifscCode);
             } catch (Exception ex) {
-                ex.printStackTrace();
+            	ex.printStackTrace();
             }
         }
-    
 
-    // Secure string comparison to prevent timing attacks
-    private boolean secureEquals(String s1, String s2) {
-        if (s1 == null || s2 == null) return false;
-        if (s1.length() != s2.length()) return false;
-        int result = 0;
-        for (int i = 0; i < s1.length(); i++) {
-            result |= s1.charAt(i) ^ s2.charAt(i);
-        }
-        return result == 0;
-    }
+
 
     // Helper to send error without throwing extra exceptions
     private void sendError(HttpServletResponse res, int status, String message) throws IOException {
@@ -326,4 +319,69 @@ public class InterBankHandler {
         error.put("error", message);
         res.getWriter().write(error.toString());
     }
+    
+    public PrivateKey getPrivateKeyFromEnv() throws Exception {
+        String base64Key = System.getenv("privateKey");
+        if (base64Key == null || base64Key.trim().isEmpty()) {
+            throw new IllegalStateException("PRIVATE_KEY environment variable is not set");
+        }
+
+        // Clean the key: remove whitespace, newlines, tabs
+        String cleanedKey = base64Key
+            .replaceAll("\\s", ""); // Removes all whitespace, including \n, \r, spaces
+
+        if (cleanedKey.isEmpty()) {
+            throw new IllegalArgumentException("Private key is empty after cleaning");
+        }
+
+        // Decode Base64
+        byte[] keyBytes;
+        try {
+            keyBytes = Base64.getDecoder().decode(cleanedKey);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid Base64 encoding in private key", e);
+        }
+
+        // Generate private key
+        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        return keyFactory.generatePrivate(keySpec);
+    }
+    
+    
+
+    
+    public static PublicKey loadPublicKey(String base64PublicKey) throws Exception {
+        // 1. Decode the Base64 string to bytes
+        byte[] decodedKey = Base64.getDecoder().decode(base64PublicKey);
+
+        // 2. Create key spec (X.509 for public keys)
+        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decodedKey);
+
+        // 3. Generate PublicKey object
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        return keyFactory.generatePublic(keySpec);
+    }
+    
+    
+    
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

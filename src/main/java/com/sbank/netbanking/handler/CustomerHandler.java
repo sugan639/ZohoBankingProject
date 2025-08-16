@@ -235,8 +235,8 @@ public class CustomerHandler {
 	                res.getWriter().write(resp.toString());
 	                return;
 	            }
-
-	            // 2. Credit ti interbank account
+	            
+	            // 2. Credit interbank account
 	            InterBankHandler interBankHandler = new InterBankHandler();
 				response = interBankHandler.initiateInterbankTransfer(fromAccount, toAccount, amount, userId, transactionId, ifscCode);
 	        }

@@ -5,9 +5,15 @@ public class ClientData {
 	private String ifscCode;
 	private String bankName;
 	private String clientUrl;
-	private String secretKey;
+	private String publicKey;
 	
 	
+	public String getPublicKey() {
+		return publicKey;
+	}
+	public void setPublicKey(String publicKey) {
+		this.publicKey = publicKey;
+	}
 	public String getIfscCode() {
 		return ifscCode;
 	}
@@ -27,14 +33,7 @@ public class ClientData {
 	public void setClientUrl(String clientUrl) {
 		this.clientUrl = clientUrl;
 	}
-	public String getSecretKey() {
-		return secretKey;
-	}
-	public void setSecretKey(String secretKey) {
-		this.secretKey = secretKey;
-	}
-	
-	
+
 	
 	
 
